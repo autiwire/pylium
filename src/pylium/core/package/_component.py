@@ -1,17 +1,13 @@
-from typing import Dict, Any, Optional, ClassVar, TypeVar, Generic, Type
-from abc import ABC
+from typing import Dict, Any, Optional, ClassVar, TypeVar, Generic, Type, List
 
 # TODO: add dep to installer
-from sqlalchemy import MetaData
 from sqlmodel import SQLModel, Field
+import importlib
+import os
 
-class _PackageComponent(SQLModel, table=False):
+class _PackageComponent():
     """
     This is the base class for all Pylium components.
-    It is used to register components and create a registry of components.
-
-    Usually users will not need to use this class directly and instead use the ready built components in the package.
-    If you need to create a new component, you can inherit from this class and add it to the registry.    
     """
 
     Field = Field
@@ -19,15 +15,19 @@ class _PackageComponent(SQLModel, table=False):
     # *** subclass overrides ***
 
     # The name of the component - used to register the component (set once per inheritance hierarchy)
-    __component__ = ""
+    __component__: str = ""
 
     # *** class attributes ***
-    __registry__: Dict[str, type] = {}  # Global registry of all components
 
+    # Global registry of all components
+    __registry__: Dict[str, type] = {} 
+
+    # *** class methods ***
     @classmethod
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, *args, **kwargs):
         print(f"Component init_subclass: {cls.__name__}")
-        super().__init_subclass__(**kwargs)
+        # Don't call super().__init_subclass__ as object doesn't accept args
+        # super().__init_subclass__(*args, **kwargs)
             
         # Handle __component__ - only inherit if set in parent. do only set once per inheritance hierarchy
         if cls.__component__ == "":
@@ -36,6 +36,11 @@ class _PackageComponent(SQLModel, table=False):
                 if hasattr(base, '__component__') and base.__component__ != "":
                     cls.__component__ = base.__component__
                     break
+
+    def __init__(self, *args, **kwargs):
+        print(f"Component init: {self.__module__}")
+        # Don't call super().__init__ as we need to handle SQLModel initialization
+        # super().__init__(*args, **kwargs)
 
     @classmethod
     def register(cls):
@@ -49,8 +54,71 @@ class _PackageComponent(SQLModel, table=False):
 
     @classmethod
     def get_component(cls, component_type: str) -> Optional[type]:
-        """Get a component by its type"""
+        """Get a component by its component type"""
         return cls.__registry__.get(component_type)
+
+
+    # Get the component of the package the class is in, defined by its base class
+    # Therefore get the __component__ of the base class and store it into a string component_type
+    # Search for _{component_type} package/module and return the class inheriting from component_base_class
+    @classmethod
+    def get_sibling_component(cls, sibling_class: type) -> Optional[type]:
+        """Get a component type from the same module/package"""
+        
+        print(f"Getting sibling component for {sibling_class.__name__} of class {cls.__name__}")
+        
+        # Don't look for siblings if we're already an implementation class
+        if issubclass(cls, sibling_class):
+            return None
+            
+        module_name = cls.__module__
+        # Module names can have 2 schemes:
+        # a/b/c/_{component_type}.py
+        # a/b/c_{component_type}.py
+        # We need to extract the package name from the module name
+        package_parts = module_name.split('.')
+        
+        # Get the component type from the sibling class
+        component_type = sibling_class.__component__
+        if not component_type:
+            return None
+            
+        # Get the current module name without the component type
+        base_module = '_'.join(package_parts[-1].split('_')[:-1])
+        if not base_module:
+            base_module = package_parts[-1]
+        print(f"Base module: {base_module}")
+        
+        # Determine which scheme we're using
+        current_module = package_parts[-1]
+        if current_module.startswith('_'):
+            # Style 1: a/b/c/_{component_type}.py
+            module_path = '.'.join(package_parts[:-1] + [f"_{component_type}"])
+        else:
+            # Style 2: a/b/c_{component_type}.py
+            module_path = '.'.join(package_parts[:-1] + [f"{base_module}_{component_type}"])
+            
+        print(f"Module path: {module_path}")
+        
+        try:
+            module = importlib.import_module(module_path)
+            print(f"Module: {module}")
+            
+            # Use pkgutil to find the class that inherits from sibling_class
+            import pkgutil
+            import inspect
+            
+            # Get all classes in the module
+            for name, obj in inspect.getmembers(module):
+                if inspect.isclass(obj) and obj != cls:  # Skip the current class
+                    print(f"Found class: {name}")
+                    if issubclass(obj, sibling_class):
+                        print(f"Found component: {obj.__name__}")
+                        return obj
+                        
+        except ImportError:
+            print(f"No component module {module_path} found")
+            return None
 
     @classmethod
     def _get_component_info(cls, self = None) -> str:
@@ -93,17 +161,50 @@ class _PackageComponent(SQLModel, table=False):
         print(f"Component new: {cls.__module__}")
         return super().__new__(cls, *args, **kwargs)
 
-    def __init__(self):
-        print(f"Component init: {self.__module__}")
-        super().__init__()
-
     def __repr__(self) -> str:
         """Returns a concise technical representation of the component."""
         table_is_true = "True" if getattr(self.__class__, 'model_config', {}).get('table', False) else "False"
-        component_type = self.__component__ or "unregistered"
+        component_type = self.__component__ or "<none>"
         return f"[{'✓' if table_is_true == 'True' else ' '}] {self.__class__.__name__} <{component_type}>"
 
     def __str__(self) -> str:
         return self._get_component_info(self)
 
-        
+class _PackageHeaderComponent(_PackageComponent, SQLModel, table=False):
+    """
+    This is the base class for all Pylium components.
+    It is used to register components and create a registry of components.
+
+    Usually users will not need to use this class directly and instead use the ready built components in the package.
+    If you need to create a new component, you can inherit from this class and add it to the registry.    
+    """
+
+    def __init__(self, *args, **kwargs):
+        print(f"Header component init: {self.__module__}")
+        # Initialize SQLModel first to ensure Pydantic is set up
+        SQLModel.__init__(self, *args, **kwargs)
+        # Then initialize the package component
+        _PackageComponent.__init__(self, *args, **kwargs)
+
+    @classmethod
+    def __init_subclass__(cls, *args, **kwargs):
+        print(f"Header component init_subclass: {cls.__name__}")
+        # Call SQLModel's __init_subclass__ first to ensure Pydantic is set up
+        SQLModel.__init_subclass__()
+        # Then call parent __init_subclass__
+        _PackageComponent.__init_subclass__(cls)
+
+class _PackageImplComponentMixin(_PackageComponent):
+    """
+    This is a mixin class for all Pylium implementation components.
+    """
+
+    def __init__(self, *args, **kwargs):
+        print(f"Impl component init: {self.__module__}")
+        # Initialize the package component
+        _PackageComponent.__init__(self, *args, **kwargs)
+
+    @classmethod
+    def __init_subclass__(cls, *args, **kwargs):
+        print(f"Impl component init_subclass: {cls.__name__}")
+        _PackageComponent.__init_subclass__(cls)

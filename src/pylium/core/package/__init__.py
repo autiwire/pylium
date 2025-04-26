@@ -1,5 +1,6 @@
-from ._component import _PackageComponent
+from ._component import _PackageHeaderComponent, _PackageImplComponentMixin
 from ._header import _PackageHeader
+from ._impl import _PackageImplMixin
 
 from abc import ABC, abstractmethod
 
@@ -10,10 +11,11 @@ class Package(ABC):
     A package can be a subpackage or a standalone package.
     This class contains nested classed which are the base classes for the components of the package.
 
-    """
-
-    Component = _PackageComponent
+    """ 
+    HeaderComponent = _PackageHeaderComponent
     Header = _PackageHeader
+    ImplComponent = _PackageImplComponentMixin
+    Impl = _PackageImplMixin
 
     def __init__(self):
         pass    
