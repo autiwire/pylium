@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=42", "wheel", "setuptools_scm>=8.0.0", "virtualenv>=20.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pylium"
+dynamic = ["version"]
+readme = "README.md"
+dependencies = [
+    "virtualenv>=20.0.0",
+    "wheel>=0.39.0",
+    "setuptools>=42.0.0",
+    "setuptools_scm>=8.0.0",
+]
+
+#[project.optional-dependencies]
+#dev = [
+#    "pip-tools>=7.0.0",
+#    "virtualenv>=20.0.0",
+#]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pylium.*"]
+
+[tool.setuptools_scm]
+write_to = "src/pylium/_version.py"
+version_scheme = "post-release"
+local_scheme = "node-and-date" 
