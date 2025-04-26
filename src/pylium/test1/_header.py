@@ -5,8 +5,6 @@ class Test1(Package.Header, table=True):
     This is the header class for Pylium.
     """
 
-    #__abstract__ = True
-
     test_field: str = Package.Header.Field(default="test", primary_key=True)
 
     def __init__(self):

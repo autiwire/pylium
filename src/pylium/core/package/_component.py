@@ -5,7 +5,7 @@ from abc import ABC
 from sqlalchemy import MetaData
 from sqlmodel import SQLModel, Field
 
-class _PackageComponent(SQLModel):
+class _PackageComponent(SQLModel, table=False):
     """
     This is the base class for all Pylium components.
     It is used to register components and create a registry of components.
@@ -18,23 +18,16 @@ class _PackageComponent(SQLModel):
 
     # *** subclass overrides ***
 
-    # Abstract class - determines if this can be initialized (per-class)
-    __abstract__ = True  # Base class is abstract, prevents table creation
-
     # The name of the component - used to register the component (set once per inheritance hierarchy)
     __component__ = ""
 
     # *** class attributes ***
     __registry__: Dict[str, type] = {}  # Global registry of all components
 
+    @classmethod
     def __init_subclass__(cls, **kwargs):
         print(f"Component init_subclass: {cls.__name__}")
         super().__init_subclass__(**kwargs)
-        
-        # Handle __abstract__ - each class decides for itself
-        if '__abstract__' not in cls.__dict__:
-            print(f"Component init_subclass: {cls.__name__} __abstract__ not set")
-            cls.__abstract__ = False  # Concrete classes get tables by default
             
         # Handle __component__ - only inherit if set in parent. do only set once per inheritance hierarchy
         if cls.__component__ == "":
@@ -60,23 +53,41 @@ class _PackageComponent(SQLModel):
         return cls.__registry__.get(component_type)
 
     @classmethod
-    def _get_component_info(cls) -> str:
+    def _get_component_info(cls, self = None) -> str:
         """Internal method to get component information."""
-        component_type = f"<{cls.__component__}>" or "<>"
-        abstract_status = "abstract = True" if cls.__abstract__ else "abstract = False"
-        registry_status = "registered = True" if component_type in cls.__registry__ else "registered = False"
+        component_inst_str = "object" if self is not None else "class"
+        component_type = f"<{cls.__component__}>" or "<none>"
+        # Check model config for table parameter
+        table_is_true = "True" if getattr(cls, 'model_config', {}).get('table', False) else "False"
+
+        component_type_registered = cls.get_component(cls.__component__)
+        component_type_is_registered: bool = (component_type_registered is not None and issubclass(component_type_registered, cls))
+        registry_status = "registered = True" if component_type_is_registered else "registered = False"
         
-        return (
+        table_name = cls.__tablename__ if hasattr(cls, '__tablename__') else '<none>'
+        fields = cls.__fields__.keys()
+
+        none_str = "<>"
+        values = {}
+        if self is not None:
+            none_str = "<none>"
+            for field in fields:
+                values[field] = getattr(self, field)
+
+        ret_str = (
+            f"[{'✓' if table_is_true == 'True' else ' '}] {cls.__name__} <{component_inst_str}>\n"
             f"  Module: {cls.__module__}\n"
             f"  Component: {component_type}\n"
-            f"  Status: {abstract_status}, {registry_status}"
-
-        )
+            f"  Status: {registry_status}\n"            
+            f"  SQLModel: {table_name}\n"
+            + '\n'.join(f"    {field}: {values.get(field, none_str)}" for field in fields)
+        ).strip()
+        return ret_str
 
     @classmethod
     def __info__(cls) -> str:
         """Returns a human-readable string representation of the component class."""
-        return f"<class {cls.__name__}>:\n{cls._get_component_info()}"
+        return cls._get_component_info()
 
     def __new__(cls, *args, **kwargs):
         print(f"Component new: {cls.__module__}")
@@ -88,25 +99,11 @@ class _PackageComponent(SQLModel):
 
     def __repr__(self) -> str:
         """Returns a concise technical representation of the component."""
+        table_is_true = "True" if getattr(self.__class__, 'model_config', {}).get('table', False) else "False"
         component_type = self.__component__ or "unregistered"
-        abstract = "A" if self.__abstract__ else "C"  # A for Abstract, C for Concrete
-        registered = "R" if component_type in self.__registry__ else "U"  # R for Registered, U for Unregistered
-        return f"<{self.__class__.__name__} {component_type} {abstract}{registered}>"
+        return f"[{'✓' if table_is_true == 'True' else ' '}] {self.__class__.__name__} <{component_type}>"
 
     def __str__(self) -> str:
-        """Returns a human-readable string representation of the component."""
-        sqlmodel_str = super().__str__()
-        component_info = self._get_component_info()
-        table_name = self.__class__.__tablename__ if hasattr(self.__class__, '__tablename__') else 'no table'
-        
-        # Split SQLModel string into individual fields
-        fields = sqlmodel_str.strip('{}').split(', ')
-        
-        return (
-            f"<{self.__class__.__name__} instance>:\n"
-            f"{component_info}\n"
-            f"  SQLModel: {table_name}\n"
-            + '\n'.join(f"    {field}" for field in fields)
-        )
+        return self._get_component_info(self)
 
         

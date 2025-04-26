@@ -3,15 +3,12 @@ from ._component import _PackageComponent
 from typing import ClassVar, Optional, Dict
 from sqlalchemy import MetaData
 
-class _PackageHeader(_PackageComponent):
+class _PackageHeader(_PackageComponent, table=False):
     """
     This is the base class for all Pylium header components.
     """
 
     # *** subclass overrides ***
-
-    # Abstract class - determines if this can be initialized (per-class)
-    __abstract__ = True
 
     # The name of the component - used to register the component (set once per inheritance hierarchy)
     __component__ = "header"
