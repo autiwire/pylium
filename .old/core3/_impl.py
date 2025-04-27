@@ -1,6 +1,6 @@
-from .package import Package
+from ._header import Core
 
-class CoreImpl(Package.Impl):
+class CoreImpl(Core, Core.Impl):
     
     def __init__(self, *args, **kwargs):
         print("CoreImpl __init__")

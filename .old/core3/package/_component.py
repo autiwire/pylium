@@ -6,8 +6,30 @@
 
 from typing import ClassVar
 from types import ModuleType
+
+import logging
+logger = logging.getLogger(__name__)
+from threading import Lock
+
 class Component():
 
+    _class_logger_private: ClassVar[logging.LoggerAdapter] = None
+    _class_logger_lock: ClassVar[Lock] = Lock()
+
+    @classmethod
+    def _logger(cls: type) -> logging.LoggerAdapter:
+        """Gets the logger associated with this component class's module."""
+
+        if cls._class_logger_private is None:
+            with cls._class_logger_lock:
+                if cls._class_logger_private is None:
+                    print(f"DEBUG: Getting logger for {cls.__name__}")
+                    my_cls_logger = logging.getLogger(cls.__module__)
+                    my_cls_log_adapter = logging.LoggerAdapter(my_cls_logger, {"class_name": cls.__name__})
+                    cls._class_logger_private = my_cls_log_adapter
+
+        return cls._class_logger_private
+    
     @staticmethod
     def has_direct_base_subclass(A: type, B: type) -> bool:
         """
@@ -67,6 +89,8 @@ class Component():
                 sibling_class = item
                 break # Found the first matching class
 
+            # TODO: Check if other possible siblings exist in debug mode -> warning user of non-unique components
+
         # Check if a sibling class was found
         if sibling_class is None:
             raise ValueError(f"Module {sibling_module_name} does not contain a class inheriting from {sibling_basetype.__name__}")
@@ -93,6 +117,12 @@ class Component():
     
     def __init__(self, *args, **kwargs):
         print("Component __init__")
+
+        # Get the logger for the component baseclass
+        self._log = logging.LoggerAdapter(
+            self.__class__._logger(),
+            {'class_name': self.__class__.__name__}
+        )
 
     def __new__(cls, *args, **kwargs):
         print("Component __new__")
