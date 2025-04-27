@@ -2,18 +2,10 @@ from typing import Type
 
 from sqlmodel import SQLModel
 from sqlmodel.main import SQLModelMetaclass 
+from sqlalchemy.schema import MetaData
 
 import logging
 logger = logging.getLogger(__name__)
-
-class ComponentMetaOptions():
-    sqlmodel: Type[SQLModel] = SQLModel
-    
-    def __init__(self, sqlmodel: Type[SQLModel] = SQLModel):
-        self.sqlmodel = sqlmodel
-
-    def __str__(self):
-        return f"ComponentMetaOptions(sqlmodel={self.sqlmodel.__name__})"
 
 class ComponentMetaclass(SQLModelMetaclass): # Inherit from SQLModelMetaclass
     """
@@ -21,17 +13,13 @@ class ComponentMetaclass(SQLModelMetaclass): # Inherit from SQLModelMetaclass
     via the 'component_base' keyword argument during class definition.
 
     Example:
-        class MyComponent(Component, component_base=MySpecificBase):
+        class MyComponent(Component, sqlmodel=MySpecificBase):
             pass
     """
 
     # Change 'sqlmodel_base' parameter to 'sqlmodel', defaulting to SQLModel
-    def __new__(mcls, name, bases, namespace, sqlmodel: Type[SQLModel] = SQLModel, is_impl: bool = False, **kwargs):
+    def __new__(mcls, name, bases, namespace, sqlmodel: Type[SQLModel] = SQLModel, **kwargs):
         logger.debug(f"ComponentMeta creating class '{name}' with original bases {bases}")
-
-        # Validate the provided sqlmodel base using the new parameter name
-        if not isinstance(sqlmodel, type) or not issubclass(sqlmodel, SQLModel):
-            raise TypeError(f"Parameter 'sqlmodel=' for class '{name}' must be a subclass of SQLModel, got {sqlmodel}")
 
         final_bases = list(bases)
 
@@ -47,7 +35,6 @@ class ComponentMetaclass(SQLModelMetaclass): # Inherit from SQLModelMetaclass
                 logger.debug(f"Adding SQLModel base: {sqlmodel.__name__} to '{name}'")
                 # Insert early for MRO benefits?
                 final_bases.insert(0, sqlmodel)
-        # ------------------------------------ 
 
         # Finalize bases tuple
         if not final_bases:
