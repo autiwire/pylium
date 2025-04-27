@@ -1,4 +1,4 @@
-from pylium.core import Core
+from pylium.core2 import Core
 
 class TestCore(Core):
     def __init__(self, *args, **kwargs):
@@ -6,4 +6,3 @@ class TestCore(Core):
 
     def testfunc(self):
         print(f"testfunc from TestCore")
-        super().testfunc()

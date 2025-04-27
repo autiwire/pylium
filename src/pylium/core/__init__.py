@@ -1,3 +1,3 @@
-from ._component import Core as Core
+from ._header import Core
 
 __all__ = ["Core"]

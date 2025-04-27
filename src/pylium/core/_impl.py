@@ -1,14 +1,14 @@
-from ._component import Core
+from .package import Package
 
-class CoreImpl(Core, Core.ImplMixin):
-    """
-    This is the implementation for the core component.
-    """
-
+class CoreImpl(Package.Impl):
+    
     def __init__(self, *args, **kwargs):
+        print("CoreImpl __init__")
         super().__init__(*args, **kwargs)
-        print(f"Impl init: {self.__module__}|{self.__class__.__name__}")
+
 
     def testfunc(self):
         print("testfunc from CoreImpl")
         super().testfunc()
+
+

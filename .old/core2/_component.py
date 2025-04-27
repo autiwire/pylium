@@ -1,6 +1,8 @@
 from .component import Component
 
-class Core(Component):
+from sqlmodel import SQLModel
+
+class Core(Component, sqlmodel=SQLModel):
     """
     This is the core component of Pylium.
     """

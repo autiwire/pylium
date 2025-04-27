@@ -1,10 +1,7 @@
-from . import _Core
+from . import Core
 
-def main():
-    print("Hello, World!")
+c = Core()
 
-    c = _Core()
-    print(c)
-    c.testfunc()
-if __name__ == "__main__":
-    main()
+print(c)
+
+print(c.get_sibling_from_basetype(Core.Impl))
