@@ -125,22 +125,24 @@ class _PackageComponent():
         """Internal method to get component information."""
         component_inst_str = "object" if self is not None else "class"
         component_type = f"<{cls.__component__}>" or "<none>"
-        # Check model config for table parameter
-        table_is_true = "True" if getattr(cls, 'model_config', {}).get('table', False) else "False"
-
         component_type_registered = cls.get_component(cls.__component__)
         component_type_is_registered: bool = (component_type_registered is not None and issubclass(component_type_registered, cls))
         registry_status = "registered = True" if component_type_is_registered else "registered = False"
         
+        table_is_true = "True" if getattr(cls, 'model_config', {}).get('table', False) else "False"
         table_name = cls.__tablename__ if hasattr(cls, '__tablename__') else '<none>'
         fields = cls.__fields__.keys()
+
+        print(f"Fields: {fields}")
 
         none_str = "<>"
         values = {}
         if self is not None:
             none_str = "<none>"
             for field in fields:
-                values[field] = getattr(self, field)
+                values[field] = self.__getattr__(field)
+
+        print(f"Values: {values}")
 
         ret_str = (
             f"[{'✓' if table_is_true == 'True' else ' '}] {cls.__name__} <{component_inst_str}>\n"

@@ -1,3 +1,3 @@
-from .package import Package
+from ._component import Core as Core
 
-__all__ = ["Package"]
+__all__ = ["Core"]
