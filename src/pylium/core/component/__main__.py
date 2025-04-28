@@ -1,40 +1,24 @@
 from . import Component
 
 from typing import Optional
-
+from sqlalchemy.schema import MetaData
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(name)s:%(message)s')
 logger = logging.getLogger(__name__)
 
 # TEST
 from sqlmodel import SQLModel, Field
-from sqlalchemy.schema import MetaData
 
-x = MetaData()
+# Define separate metadata instances
 y = MetaData()
+y2 = MetaData()
 
-#class MySQLModel(SQLModel, metadata=x):
-#    def __init__(self, *args, **kwargs):
-#        logger.debug(f"MySQLModel __init__: {self.__class__.__name__}")
-#        super().__init__(*args, **kwargs)
+# Remove BaseModel1, BaseModel2 definitions
+# class BaseModel1(Model): ...
+# class BaseModel2(Model): ...
 
-#class MySQLModel2(SQLModel, metadata=x):
-#    def __init__(self, *args, **kwargs):
-#        logger.debug(f"MySQLModel2 __init__: {self.__class__.__name__}")
-#        super().__init__(*args, **kwargs)
-
-class SQLData():
-    def __init__(self, metadata: Optional[MetaData] = None, *args, **kwargs):    
-        logger.debug(f"SQLData __init__: {self.__class__.__name__}")
-        self.metadata = metadata if metadata is not None else MetaData()
-        self.model = type("_BaseModel", (SQLModel,), {"metadata": self.metadata}, table=False)
-
-z = MetaData()
-
-x = SQLData(metadata=z)
-y = SQLData(metadata=z)
-
-class MyComponent(Component, sqlmodel=x.model, table=True):
+# Define components passing metadata as kwarg
+class MyComponent(Component, metadata=y, table=True):
     
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
@@ -53,7 +37,8 @@ class MyComponentImpl(MyComponent, MyComponent.ImplMixin):
         super().__init__(*args, **kwargs)
 
 
-class MyComponent2(Component, sqlmodel=y.model, table=True):
+class MyComponent2(Component, metadata=y2, table=True):
+
     xyz: Optional[int] = Field(default=None, primary_key=True)
     rst: str
 
@@ -67,28 +52,37 @@ class MyComponentImpl2(MyComponent2, MyComponent2.ImplMixin):
         logger.debug(f"MyComponentImpl2 __init__: {self.__class__.__name__}")
         super().__init__(*args, **kwargs)
 
+# MyComponent3 inherits MyComponent, should inherit metadata=y implicitly
+class MyComponent3(MyComponent): # No need to repeat metadata=y here
+    extra_field: str = Field(default="default_value")
+    another_field: Optional[str] = None
+
+    def __init__(self, *args, **kwargs):
+        logger.debug(f"MyComponent3 __init__: {self.__class__.__name__}")
+        super().__init__(*args, **kwargs)
+
+class MyComponent3Impl(MyComponent3, MyComponent3.ImplMixin):
+
+        def __init__(self, *args, **kwargs):
+            logger.debug(f"MyComponent3Impl __init__: {self.__class__.__name__}")
+            super().__init__(*args, **kwargs)
+
 print("Creating MyComponent")
-c = MyComponent()
+c = MyComponent(name="John", secret_name="Doe", age=30)
 print(c)
 
-print("Creating MyComponentImpl")
-c2 = MyComponentImpl()
-print(c2)
+print("Creating MyComponent3")
+c3 = MyComponent3(name="Jane", secret_name="Smith")
+print(c3)
 
 # create database
 from sqlmodel import create_engine
 engine = create_engine("sqlite:///test.db")
 engine2 = create_engine("sqlite:///test2.db")
 
-# create tables
-from sqlmodel import Field, SQLModel, create_engine, select
-
-# Create the tables in the database
-# Uses the metadata associated with MySQLModel
-logger.info("Creating database tables...")
-x.metadata.create_all(engine)
-logger.info("Database tables created (if they didn't exist).")
-
-logger.info("Creating database tables...")
-y.metadata.create_all(engine2)
+# create tables using the specific metadata instances
+logger.info("Creating database tables using metadata y...")
+y.create_all(engine)
+logger.info("Creating database tables using metadata y2...")
+y2.create_all(engine2)
 logger.info("Database tables created (if they didn't exist).")

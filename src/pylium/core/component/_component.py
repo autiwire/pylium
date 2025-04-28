@@ -1,28 +1,24 @@
-from ._meta import ComponentMetaclass
+from ._model import Model
+from ._component_meta import ComponentMetaclass
 from ._impl import ComponentImplMixin 
-from ._database import SQLModel
 
 from typing import Type, ClassVar
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Component now only uses the metaclass, SQLModel is injected by the meta
-class Component(metaclass=ComponentMetaclass):
+# Add Model to the base classes here
+class Component(Model, metaclass=ComponentMetaclass, table=False):
     """
-    Base class for Pylium components.
-
-    Inherits dynamically from a specific SQLModel base class specified by the
-    'sqlmodel_base' keyword argument during class definition (defaults to SQLModel).
+    Base class for Pylium components, inheriting Model -> SQLModel.
     """
 
-    Meta: ClassVar[ComponentMetaclass] = ComponentMetaclass
     ImplMixin: ClassVar[ComponentImplMixin] = ComponentImplMixin
 
     def __init__(self, *args, **kwargs):
         logger.debug(f"Component __init__: {self.__class__.__name__}")
         try:
-            # Super call will now correctly find the injected SQLModel base
+            # super() will call Model.__init__ -> SQLModel.__init__
             super().__init__(*args, **kwargs)
         except TypeError as e:
             # This might happen if the configured_base has an __init__ with a
@@ -32,11 +28,11 @@ class Component(metaclass=ComponentMetaclass):
 
     def __new__(cls, *args, **kwargs):
         logger.debug(f"Component __new__: {cls.__name__}")
-        # Standard __new__ behavior unless overridden by subclasses 
-        return super().__new__(cls)
+        return super().__new__(cls, *args, **kwargs)
 
     def __init_subclass__(cls, **kwargs):
         logger.debug(f"Component __init_subclass__: {cls.__name__}")
+        # Use standard super() call for __init_subclass__
         super().__init_subclass__(**kwargs)
         
 
