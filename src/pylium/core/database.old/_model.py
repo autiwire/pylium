@@ -1,12 +1,12 @@
 from sqlmodel import SQLModel
-from ._model_meta import ModelMetaclass
+from ._model_meta import _ModelMetaclass
 
 from typing import Optional, ClassVar
 
 import logging
 logger = logging.getLogger(__name__)
 
-class Model(SQLModel, metaclass=ModelMetaclass, table=False):
+class _Model(SQLModel, metaclass=_ModelMetaclass, table=False):
     
     def __init__(self, *args, **kwargs):
         logger.debug(f"Model __init__: {self.__class__.__name__}")

@@ -11,6 +11,8 @@ dependencies = [
     "wheel>=0.39.0",
     "setuptools>=42.0.0",
     "setuptools_scm>=8.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
 ]
 
 #[project.optional-dependencies]

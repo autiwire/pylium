@@ -7,7 +7,7 @@ from sqlalchemy.schema import MetaData
 import logging
 logger = logging.getLogger(__name__)
 
-class ModelMetaclass(SQLModelMetaclass): 
+class _ModelMetaclass(SQLModelMetaclass): 
     """
     Metaclass that allows specifying database model base class for a component
 

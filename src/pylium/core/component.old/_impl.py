@@ -2,7 +2,7 @@
 import logging
 logger = logging.getLogger(__name__)
 
-class ComponentImplMixin():
+class _ComponentImplMixin():
     
     def __init__(self, *args, **kwargs):
         logger.debug(f"ComponentImplMixin __init__: {self.__class__.__name__}")

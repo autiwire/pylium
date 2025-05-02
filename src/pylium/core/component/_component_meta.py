@@ -1,24 +1,20 @@
-from ._model_meta import ModelMetaclass
-# Remove ComponentImplMixin import if no longer used here
-# from ._impl import ComponentImplMixin 
 from typing import Type
-import logging
 
+import logging
 logger = logging.getLogger(__name__)
 
-class ComponentMetaclass(ModelMetaclass):
+class _ComponentMetaclass(type):
     """
-    Metaclass for Pylium Components, building upon ModelMetaclass.
-    (Currently contains no Component-specific logic beyond inheriting ModelMetaclass).
+    Metaclass for Pylium Components
     """
-
-    # Simplified __new__: Removed is_impl logic and parameter.
+    
     def __new__(mcls, name, bases, namespace, *args, **kwargs):
+        
+        namespace["_is_impl"] = namespace.get("_is_impl", False)
+
+        # create the object
         new_cls = super().__new__(mcls, name, bases, namespace, *args, **kwargs)
-        logger.debug(f"Class '{name}' created by ComponentMetaclass: {new_cls}")
-
-        # Any additional Component-specific setup on new_cls can go here
-
+        logger.debug(f"Class '{name}' created by _ComponentMetaclass ({namespace['_is_impl']=}): {new_cls}")
         return new_cls
     
 
