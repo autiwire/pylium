@@ -11,16 +11,14 @@ import datetime
 # Here we only define the dependencies of the compontent for the install system to detect them automatically
 #
 
-import logging
 import importlib
 import inspect
 import os
 
+#import logging
+#logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
-
-_mod = ComponentModule(
+pylium = ComponentModule(
     name=__name__,
     version="0.1.0",
     description="Pylium component",
@@ -29,6 +27,11 @@ _mod = ComponentModule(
             name="pydantic-settings", 
             type=ComponentModule.Dependency.Type.PIP, 
             version=">=0.1.0"
+        ),
+        ComponentModule.Dependency(
+            name="fire", 
+            type=ComponentModule.Dependency.Type.PIP, 
+            version=">=0.5.0"
         )
     ],
     authors=[
@@ -39,8 +42,10 @@ _mod = ComponentModule(
             since_date=datetime.date(2021, 1, 1)
         )
     ],
+    settings_class=ComponentModule.Config,
+    cli=True,
 )
-
+logger = pylium.logger
 
 class Component(ComponentBase, metaclass=ComponentMetaclass):
     """
@@ -49,6 +54,7 @@ class Component(ComponentBase, metaclass=ComponentMetaclass):
 
     Base = ComponentBase
     Metaclass = ComponentMetaclass
+    Module = ComponentModule
 
     # Calculate the likely source root by going up 3 levels from the current file's directory
     _current_file_dir = os.path.dirname(__file__)
@@ -155,12 +161,13 @@ class Component(ComponentBase, metaclass=ComponentMetaclass):
                         module = importlib.import_module(full_module_path)
                         logger.debug(f"Successfully imported module: {full_module_path}")
 
-                        if hasattr(module, "_mod"):
-                            if isinstance(module._mod, ComponentModule):
-                                logger.debug(f"Found ComponentModule (_mod) in: {full_module_path}")
-                                component_modules.append(module._mod)
+                        # Check if module has pylium attribute and it is a ComponentModule instance
+                        if hasattr(module, "pylium"):
+                            if isinstance(module.pylium, ComponentModule):
+                                logger.debug(f"Found ComponentModule (pylium) in: {full_module_path}")
+                                component_modules.append(module.pylium)
                             else:
-                                logger.warning(f"Found _mod in {full_module_path}, but it is not a ComponentModule instance.")
+                                logger.warning(f"Found pylium in {full_module_path}, but it is not a ComponentModule instance.")
 
                     except ImportError as e:
                         logger.debug(f"Could not import module {full_module_path} (might not be a valid module): {e}")

@@ -55,3 +55,10 @@ def test_component_module_search():
     logger.info("Running test_component_module_search...")
     component_modules = Component._get_all_component_modules()
     assert len(component_modules) > 0, "Expected at least one component module"
+    logger.info(f"Found {len(component_modules)} component modules: ")
+    for module in component_modules:
+        logger.info(f"  Module: {module}")
+        logger.info(f"    Description: {module.description}")
+        logger.info(f"    Dependencies: {module.dependencies}")
+        logger.info(f"    Authors: {module.authors}")
+    logger.info("Test test_component_module_search passed.")
