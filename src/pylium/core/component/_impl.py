@@ -1,6 +1,6 @@
 # Component Implementation - Demo implementation
 
-from ._component import Component
+from . import Component
 
 # Import the heavy machinery
 # 
