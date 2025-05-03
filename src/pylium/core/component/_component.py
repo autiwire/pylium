@@ -1,4 +1,5 @@
-from ._component_meta import _ComponentMetaclass
+from ._component_meta import ComponentMetaclass
+from ._component_base import ComponentBase
 
 from typing import Type, ClassVar, Optional
 
@@ -8,30 +9,13 @@ import inspect
 
 logger = logging.getLogger(__name__)
 
-class _Component(metaclass=_ComponentMetaclass):
-    """
-    Base class for Pylium core components
-    """
+class Component(ComponentBase, metaclass=ComponentMetaclass):
 
-    # Per-class implementation setting - set this to True in impl classes
-    _is_impl: ClassVar[bool] = False # False by default -> header class, set to True in impl classes
-    _no_impl: ClassVar[bool] = False # False by default -> disables loading of impl classes
-    
-    @staticmethod
-    def _has_direct_base_subclass(A: type, B: type) -> bool:
-        """
-        Returns True if A has B (or a subclass of B) as a direct base class.
-        Handles potential TypeErrors if A.__bases__ is not available.
-        """
-        try:
-             # Check direct bases only
-             return any(base is B or (isinstance(base, type) and issubclass(base, B)) for base in A.__bases__)
-        except AttributeError:
-             logger.warning(f"Could not access __bases__ for type {A} during check.")
-             return False
+    Base = ComponentBase
+    Metaclass = ComponentMetaclass
 
     @classmethod
-    def _find_impl(cls) -> Type["_Component"]:
+    def _find_impl(cls) -> Type["Component"]:
         my_module = cls.__module__
         # TODO: Refine this list based on actual module structure needs
         impl_modules_names = [f"{my_module}", f"{my_module}_impl", f"_impl"] # Added module prefix for relative _impl
@@ -48,10 +32,8 @@ class _Component(metaclass=_ComponentMetaclass):
                     # Check if obj is a class, is not the header class itself,
                     # inherits cls directly, and name ends with "Impl" (convention)
                     if (inspect.isclass(obj) and 
-                        obj is not cls and
-                        _Component._has_direct_base_subclass(obj, cls) and 
-                        obj.__name__.endswith("Impl")): # Check name convention
-                        
+                            obj is not cls and
+                            Component._has_direct_base_subclass(obj, cls)):
                         logger.debug(f"    Found matching implementation class by convention: {obj.__name__}")
                         impl_cls = obj
                         break # Found the class in this module, exit inner loop
@@ -76,12 +58,8 @@ class _Component(metaclass=_ComponentMetaclass):
         # or on the header instance if _no_impl is True.
         logger.debug(f"Component __init__: {self.__class__.__name__} called with args: {args}, kwargs: {kwargs}")
         try:
-            if self.__class__ == object:
-                logger.debug(f"  self.__class__ is object, calling super().__init__")
-                super().__init__()
-            else:
-                logger.debug(f"  self.__class__ is not object, calling super().__init__(*args, **kwargs)")
-                super().__init__(*args, **kwargs)
+            logger.debug(f"  self.__class__ is not object, calling super().__init__(*args, **kwargs)")
+            super().__init__(*args, **kwargs)
         except TypeError as e:
             logger.warning(f"Potential issue during super().__init__ in {self.__class__.__name__}: {e}. Args: {args}, Kwargs: {kwargs}")
 
@@ -92,8 +70,6 @@ class _Component(metaclass=_ComponentMetaclass):
         # create the instance directly using the standard object creation mechanism.
         if cls._is_impl or cls._no_impl:
             logger.debug(f"  Creating instance of {cls.__name__} directly (is_impl={cls._is_impl}, no_impl={cls._no_impl}).")
-            # Call the next __new__ in the MRO (usually object.__new__)
-            # object.__new__ only takes cls, args/kwargs are for __init__
             instance = super().__new__(cls)
             logger.debug(f"  Component __new__ (direct) returning instance: {instance}")
             return instance
@@ -122,7 +98,6 @@ class _Component(metaclass=_ComponentMetaclass):
 
     def __init_subclass__(cls, **kwargs):
         logger.debug(f"Component __init_subclass__: {cls.__name__}")
-        # Use standard super() call for __init_subclass__
         super().__init_subclass__(**kwargs)
         
 

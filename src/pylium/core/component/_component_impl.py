@@ -1,9 +1,9 @@
-from ._component import _Component
+from ._component import Component
 
 import logging
 logger = logging.getLogger(__name__)
 
-class _ComponentImpl(_Component):
+class ComponentImpl(Component):
     _is_impl = True
 
     def __init__(self, *args, **kwargs):

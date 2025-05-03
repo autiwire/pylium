@@ -8,6 +8,6 @@ The Component class is the base class for all Pylium components.
 """
 
 # Import the module first
-from ._component import _Component as Component
+from ._component import Component 
 
 __all__ = ["Component"]
