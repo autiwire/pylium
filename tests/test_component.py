@@ -48,4 +48,10 @@ def test_component_instantiation_finds_impl():
     
     logger.info("Test test_component_instantiation_finds_impl passed.")
 
-# Add more tests here as needed, e.g., for _no_impl=True, missing impl, etc. 
+def test_component_module_search():
+    """
+    Tests that the component module search works correctly.
+    """
+    logger.info("Running test_component_module_search...")
+    component_modules = Component._get_all_component_modules()
+    assert len(component_modules) > 0, "Expected at least one component module"

@@ -16,11 +16,6 @@ class ComponentBase:
     _no_impl: ClassVar[bool] = False # False by default -> disables loading of impl classes
 
     @staticmethod
-    def _get_impl_class_lazy(cls) -> type:
-        from ._component_impl import ComponentImpl
-        return ComponentImpl
-
-    @staticmethod
     def _has_direct_base_subclass(A: type, B: type) -> bool:
         """
         Returns True if A has B (or a subclass of B) as a direct base class.

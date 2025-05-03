@@ -1,24 +1,82 @@
 from ._component_meta import ComponentMetaclass
 from ._component_base import ComponentBase
+from ._component_module import ComponentModule
 
-from typing import Type, ClassVar, Optional
+from typing import Type, ClassVar, Optional, List
+import datetime
+
+# Import the heavy machinery
+#
+# Here you would import the heavy machinery, but do it in the impl module instead
+# Here we only define the dependencies of the compontent for the install system to detect them automatically
+#
 
 import logging
 import importlib
 import inspect
+import os
+
 
 logger = logging.getLogger(__name__)
 
+
+_mod = ComponentModule(
+    name=__name__,
+    version="0.1.0",
+    description="Pylium component",
+    dependencies=[
+        ComponentModule.Dependency(
+            name="pydantic-settings", 
+            type=ComponentModule.Dependency.Type.PIP, 
+            version=">=0.1.0"
+        )
+    ],
+    authors=[
+        ComponentModule.AuthorInfo(
+            name="John Doe", 
+            email="john.doe@example.com", 
+            since_version="0.1.0", 
+            since_date=datetime.date(2021, 1, 1)
+        )
+    ],
+)
+
+
 class Component(ComponentBase, metaclass=ComponentMetaclass):
+    """
+    Base class for Pylium core components
+    """
 
     Base = ComponentBase
     Metaclass = ComponentMetaclass
 
+    # Calculate the likely source root by going up 3 levels from the current file's directory
+    _current_file_dir = os.path.dirname(__file__)
+    _default_src_root = os.path.abspath(os.path.join(_current_file_dir, '..', '..', '..'))
+
+    # Calculate ComponentDirs based on environment variable or default src root
+    _env_dirs_str = os.environ.get("PYLIUM_COMPONENT_DIRS")
+    _component_src_roots = []  # Initialize as empty list
+
+    if _env_dirs_str:
+        # If env var is set, split using os.pathsep and filter out empty/whitespace-only paths
+        _component_src_roots = [
+            d.strip() for d in _env_dirs_str.split(os.pathsep) if d.strip()
+        ]
+
+    # If the environment variable didn't provide any valid paths, use the calculated default
+    if not _component_src_roots:
+        _component_src_roots = [_default_src_root]
+    # Optional: Uncomment below if you ALWAYS want to include the default src root
+    # elif _default_src_root not in _component_src_roots:
+    #    _component_src_roots.insert(0, _default_src_root) # Prepend default root
+
+    ComponentDirs: ClassVar[List[str]] = _component_src_roots
+
     @classmethod
     def _find_impl(cls) -> Type["Component"]:
         my_module = cls.__module__
-        # TODO: Refine this list based on actual module structure needs
-        impl_modules_names = [f"{my_module}", f"{my_module}_impl", f"_impl"] # Added module prefix for relative _impl
+        impl_modules_names = [f"{my_module}", f"{my_module}_impl", f"_impl"]
 
         impl_cls = None
         for module_name in impl_modules_names:
@@ -31,27 +89,86 @@ class Component(ComponentBase, metaclass=ComponentMetaclass):
                     logger.debug(f"    Checking member: {name} ({type(obj)})")
                     # Check if obj is a class, is not the header class itself,
                     # inherits cls directly, and name ends with "Impl" (convention)
-                    if (inspect.isclass(obj) and 
+                    if (inspect.isclass(obj) and
                             obj is not cls and
                             Component._has_direct_base_subclass(obj, cls)):
                         logger.debug(f"    Found matching implementation class by convention: {obj.__name__}")
                         impl_cls = obj
-                        break # Found the class in this module, exit inner loop
-            
+                        break  # Found the class in this module, exit inner loop
+
             except ImportError:
                 logger.debug(f"  Could not import potential impl module: {module_name}")
-                continue # Skip if module doesn't exist
-            except Exception as e: # Catch other potential errors during import/inspection
-                 logger.warning(f"  Error inspecting module {module_name}: {e}")
-                 continue
+                continue  # Skip if module doesn't exist
+            except Exception as e:  # Catch other potential errors during import/inspection
+                logger.warning(f"  Error inspecting module {module_name}: {e}")
+                continue
 
             if impl_cls:
-                break # Found the class, exit outer loop
+                break  # Found the class, exit outer loop
 
         if not impl_cls:
-             logger.debug(f"  No implementation class found after searching: {impl_modules_names}")
+            logger.debug(f"  No implementation class found after searching: {impl_modules_names}")
 
         return impl_cls
+
+    @staticmethod
+    def _get_all_component_modules(skip_impl: bool = True) -> List[ComponentModule]:
+        logger.debug(f"Searching for component modules in roots: {Component.ComponentDirs}")
+        component_modules = []
+
+        for root_dir in Component.ComponentDirs:
+            if not os.path.isdir(root_dir):
+                logger.warning(f"Component source root directory not found: {root_dir}")
+                continue
+
+            # Ensure root_dir is absolute for correct path joining
+            root_dir = os.path.abspath(root_dir)
+            logger.debug(f"Walking directory: {root_dir}")
+
+            for subdir, dirs, files in os.walk(root_dir):
+                # Optional: Skip hidden directories or specific patterns like .venv, .git, __pycache__
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
+
+                for file in files:
+                    if not file.endswith(".py") or file == '__init__.py':
+                        continue
+
+                    base_module_name = file[:-3]
+
+                    # Skip impl files if requested
+                    if skip_impl and base_module_name.endswith("_impl"):
+                        continue
+
+                    # Construct the full Python module path
+                    try:
+                        full_file_path = os.path.join(subdir, file)
+                        potential_src_root = root_dir # Assuming root_dir is the correct base
+                        relative_path = os.path.relpath(full_file_path, potential_src_root)
+                        module_path_parts = relative_path[:-3].split(os.sep)
+                        full_module_path = ".".join(module_path_parts)
+                    except ValueError:
+                        logger.warning(f"Could not determine relative path for {full_file_path} from {potential_src_root}")
+                        continue
+
+                    logger.debug(f"Attempting to import: {full_module_path}")
+                    try:
+                        module = importlib.import_module(full_module_path)
+                        logger.debug(f"Successfully imported module: {full_module_path}")
+
+                        if hasattr(module, "_mod"):
+                            if isinstance(module._mod, ComponentModule):
+                                logger.debug(f"Found ComponentModule (_mod) in: {full_module_path}")
+                                component_modules.append(module._mod)
+                            else:
+                                logger.warning(f"Found _mod in {full_module_path}, but it is not a ComponentModule instance.")
+
+                    except ImportError as e:
+                        logger.debug(f"Could not import module {full_module_path} (might not be a valid module): {e}")
+                    except Exception as e:
+                        logger.error(f"Error processing module {full_module_path}: {e}", exc_info=True)
+
+        logger.info(f"Found {len(component_modules)} component modules.")
+        return component_modules
 
     def __init__(self, *args, **kwargs):
         # This __init__ will run on the *implementation* instance if discovered,
@@ -73,16 +190,17 @@ class Component(ComponentBase, metaclass=ComponentMetaclass):
             instance = super().__new__(cls)
             logger.debug(f"  Component __new__ (direct) returning instance: {instance}")
             return instance
-        
+
         # Case 3: This is a "Header" class needing an implementation.
         logger.debug(f"  {cls.__name__} is a Header, finding implementation...")
+
         impl_cls = cls._find_impl()
 
         if impl_cls:
             # Sanity check (optional but good)
             if not getattr(impl_cls, '_is_impl', False):
-                 raise RuntimeError(f"Discovered class {impl_cls.__name__} for {cls.__name__} is not marked as an implementation (_is_impl is not True)")
-            
+                raise RuntimeError(f"Discovered class {impl_cls.__name__} for {cls.__name__} is not marked as an implementation (_is_impl is not True)")
+
             logger.debug(f"  Found implementation {impl_cls.__name__}, instantiating it instead.")
             # Instantiate the implementation class. This call will trigger:
             # 1. impl_cls.__new__(impl_cls, *args, **kwargs)
@@ -99,7 +217,6 @@ class Component(ComponentBase, metaclass=ComponentMetaclass):
     def __init_subclass__(cls, **kwargs):
         logger.debug(f"Component __init_subclass__: {cls.__name__}")
         super().__init_subclass__(**kwargs)
-        
 
     # Add other common Component methods/attributes here if needed
     pass
