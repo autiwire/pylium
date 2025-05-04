@@ -1,6 +1,6 @@
 import dataclasses
 from enum import Enum
-from typing import List, Optional, Type # Added Type hint
+from typing import List, Optional, Type 
 import datetime
 import logging
 from pydantic_settings import BaseSettings
@@ -47,6 +47,20 @@ class ComponentModuleAuthorInfo:
     def __repr__(self):
         return f"{self.name} ({self.email}) [since: {self.since_version} @ {self.since_date}]"
 
+class ComponentModuleCLI:
+    """
+    CLI for a component module.
+    """
+
+    def __init__(self):
+        pass
+
+    def run(self, args: List[str]):
+        """
+        Run the CLI.
+        """
+        raise NotImplementedError("Subclasses must implement this method")
+
 class ComponentModuleConfig(BaseSettings):
     """
     Configuration for a component module.
@@ -72,6 +86,7 @@ class ComponentModule:
     AuthorInfo = ComponentModuleAuthorInfo
 
     Config = ComponentModuleConfig
+    CLI = ComponentModuleCLI
 
     def __init__(self, 
             name: str,
@@ -79,7 +94,7 @@ class ComponentModule:
             description: str,
             dependencies: List['Dependency'],
             authors: List['AuthorInfo'],
-            settings_class: Optional[Type[BaseSettings]] = None,
+            settings_class: Optional[Type[ComponentModuleConfig]] = None,
             logger: Optional[logging.Logger] = None,
             *args, 
             **kwargs):
@@ -91,9 +106,12 @@ class ComponentModule:
         self.description = description
         self.dependencies = dependencies if dependencies else []
         self.authors = authors if authors else []
-        self._settings_class = settings_class
-        self._settings_instance: Optional[BaseSettings] = None
+        self.settings_class = settings_class
+        self.settings: Optional[ComponentModuleConfig] = None
         self.logger = logger if logger else logging.getLogger(f"{self.name}")        
+
+        if self.settings_class:
+            self.settings = self.settings_class()
 
         self.logger.debug(f"Initializing ComponentModule: {name}")
 
@@ -103,14 +121,42 @@ class ComponentModule:
     def __repr__(self):
         return f"{self.name}^{self.version}"
 
-    def add_dependency(self, name: str, dependency_type: Dependency.Type, version: str):
-        """
-        Add a dependency to the component module.
-        """
-        self.dependencies[dependency_type].append(ComponentModule.Dependency(name, dependency_type, version))
-
     def get_dependencies(self) -> dict[Dependency.Type, list[Dependency]]:
         """
         Get the dependencies of the component module.
         """
         return self.dependencies
+    
+
+    class Y:
+        """
+        A class for testing the ComponentModuleCLI.
+        """
+
+        def zy(self):
+            print("zy")
+
+    def cli(self) -> Type['ComponentModuleCLI']:
+        """
+        CLI for the component module.
+        """
+        class CLI(ComponentModuleCLI):
+            def __init__(self):
+                super().__init__()
+
+            def run(self, args: List[str]):
+                """
+                Run the CLI.
+                """
+                pass
+
+            @classmethod
+            def show(cls, v: bool = False):
+                """
+                Show information about the component module.
+                """
+                print(f"show: {v}")
+
+            y = ComponentModule.Y()
+
+        return CLI

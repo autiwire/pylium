@@ -75,7 +75,12 @@ class Component(ComponentBase, metaclass=ComponentMetaclass):
     @classmethod
     def _find_impl(cls) -> Type["Component"]:
         my_module = cls.__module__
-        impl_modules_names = [f"{my_module}", f"{my_module}_impl", f"_impl"]
+        # FIX: Generate correct relative name like 'pylium.core.component._impl'
+        impl_modules_names = [
+            f"{my_module}",               # Check module itself
+            f"{my_module}_impl",          # Check sibling_impl.py (e.g., core/component_impl.py)
+            f"{my_module}._impl"          # Check _impl.py inside package (e.g., component/_impl.py)
+        ]
 
         impl_cls = None
         for module_name in impl_modules_names:
@@ -113,7 +118,7 @@ class Component(ComponentBase, metaclass=ComponentMetaclass):
     @staticmethod
     def _get_all_component_modules(skip_impl: bool = True) -> List[ComponentModule]:
         logger.debug(f"Searching for component modules in roots: {Component.ComponentDirs}")
-        component_modules = []
+        component_modules: List[ComponentModule] = []
 
         for root_dir in Component.ComponentDirs:
             if not os.path.isdir(root_dir):
@@ -173,7 +178,7 @@ class Component(ComponentBase, metaclass=ComponentMetaclass):
 
         logger.info(f"Found {len(component_modules)} component modules.")
         return component_modules
-
+   
     def __init__(self, *args, **kwargs):
         # This __init__ will run on the *implementation* instance if discovered,
         # or on the header instance if _no_impl is True.

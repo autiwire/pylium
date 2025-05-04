@@ -9,7 +9,6 @@ import datetime
 # Here we only define the dependencies of the compontent for the install system to detect them automatically
 #
 
-
 class CoreConfig(Component.Module.Config):
     """
     Configuration for the core component
