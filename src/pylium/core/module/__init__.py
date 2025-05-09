@@ -11,13 +11,14 @@ class _ModuleType(Enum):
     NONE = "none"
     MODULE = "module"
     PACKAGE = "package"
+    PROJECT = "project"
 
     def __str__(self):
         return self.value
 
 class _ModuleBase(ABC):
     """
-    A hidden base class for all pylium modules.
+    An abstract base class for all pylium modules.
     """
    
     Type = _ModuleType
@@ -74,7 +75,7 @@ class _ModuleBase(ABC):
         
         # Set description from docstring if not overridden
         default_description = cls.__doc__ if cls.__doc__ is not None else ""
-        cls._init_var("description", default_description)
+        cls._init_var("description", default_description.strip())
 
     def __init__(self, *args, **kwargs):
         """
@@ -83,38 +84,16 @@ class _ModuleBase(ABC):
         pass
 
     def __str__(self):
-        return f"Module: {self.name}"
+        return f"{self.__class__.__name__}: {self.name} (Type: {self.type}, FQN: {self.fqn})"
     
     def __repr__(self):
-        return f"Module: {self.name}"
+        return f"{self.__class__.__name__}(name='{self.name}', type='{self.type}', fqn='{self.fqn}', file='{self.file}')"
 
 class Module(_ModuleBase):
     """
-    A module is a single python file. 
-
-    This class shall be used to describe the module and its dependencies.    
+    A module represented by a single Python (.py) file.
     """
- 
+    type: ClassVar[_ModuleBase.Type] = _ModuleBase.Type.MODULE
+    version: ClassVar[str] = "0.0.1"
 
-    #def __init__(self, *args, **kwargs):
-    #    super().__init__(*args, **kwargs)
-
-
-
-# Initialize attributes for the Module class itself
-#Module.file = __file__  # The __file__ of this pylium.core.module.__init__ module
-#Module.name = __name__  # The __name__ of this module (e.g., "pylium.core.module")
-#if Module.file and os.path.basename(Module.file) == "__init__.py":
-#    Module.fqn = f"{__name__}.__init__"
-#else:
-#    Module.fqn = __name__
-#logger.debug(f"Module class initialized: name={Module.name}, fqn={Module.fqn}, file={Module.file}")
-    
 __all__ = ["Module"]
-
-
-
-
-# def __init__(self, 
-#            settings_class: Optional[Type[ComponentModuleConfig]] = None,
-#            logger: Optional[logging.Logger] = None,
