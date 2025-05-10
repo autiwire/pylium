@@ -23,7 +23,8 @@ class Module(_ModuleBase):
         _ModuleBase.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=datetime.date(2025, 5, 10))
     ]
     dependencies: ClassVar[List[_ModuleBase.Dependency]] = [
-        _ModuleBase.Dependency(name="pydantic", type=_ModuleBase.Dependency.Type.PIP, version="2.10.2")
+        _ModuleBase.Dependency(name="pydantic", type=_ModuleBase.Dependency.Type.PIP, version="2.10.2"),
+        _ModuleBase.Dependency(name="fire", type=_ModuleBase.Dependency.Type.PIP, version="0.5.0"),
     ]
 
 __all__ = ["Module"]

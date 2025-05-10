@@ -6,7 +6,7 @@ logger = getLogger(__name__)
 # Define the metaclass
 class _ModuleMeta(ABCMeta):
     def __str__(cls):
-        logger.debug(f"ModuleMeta __str__ for: {cls.__name__}")
+        # logger.debug(f"ModuleMeta __str__ for: {cls.__name__}")
 
         # This method is called when str(ClassName) is used.
         # It accesses class variables of cls.

@@ -94,6 +94,7 @@ class _ModuleAttribute:
     default_factory: Optional[Callable[[], Any]] = None
     processor: Optional[Callable[[type], Any]] = None # processor(owner_cls) -> value
     requires: Optional[List[str]] = None # Names of other ModuleAttributes this one depends on
+    always_run_processor: bool = False # If True, processor is called even if an explicit value exists in class __dict__
     _public_name: str = dataclasses.field(init=False, repr=False)
 
     def __post_init__(self):
@@ -114,6 +115,11 @@ class _ModuleAttribute:
             # However, to allow instance-specific caching if desired later: result = owner_cls.__dict__.get(...) etc.
 
         # Logic for class access (owner_cls is the class itself)
+        
+        # If a processor exists AND always_run_processor is True, the processor takes full control.
+        # It is then responsible for how it incorporates any explicit values from owner_cls.__dict__.
+        if self.processor and self.always_run_processor:
+            return self.processor(owner_cls)
         
         # 1. Check for an explicit, non-descriptor override in the owner_cls's __dict__
         #    This handles cases like `version = "1.0.0"` in a subclass body.
@@ -139,4 +145,17 @@ class _ModuleAttribute:
         return value
     
     def __repr__(self):
-        return f"{self.__class__.__name__}(name='{self.name}', type='{self.type}', fqn='{self.fqn}', file='{self.file}')"
+        details = []
+        # Use a sentinel for default to distinguish from None if None is a valid default
+        _sentinel = object()
+        if getattr(self, 'default', _sentinel) is not _sentinel and self.default is not None: # Check self.default is not None to avoid logging default=None
+            details.append(f"default={self.default!r}")
+        if hasattr(self, '_default_factory') and self._default_factory is not None:
+            details.append(f"default_factory={self._default_factory.__name__ if hasattr(self._default_factory, '__name__') else repr(self._default_factory)}")
+        if hasattr(self, 'processor') and self.processor is not None:
+            details.append(f"processor={self.processor.__name__ if hasattr(self.processor, '__name__') else repr(self.processor)}")
+        if hasattr(self, 'requires') and self.requires:
+            details.append(f"requires={self.requires!r}")
+        if hasattr(self, 'always_run_processor') and self.always_run_processor:
+            details.append(f"always_run_processor={self.always_run_processor!r}")
+        return f"<_ModuleAttribute({', '.join(details)}) at 0x{id(self):x}>"
