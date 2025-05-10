@@ -42,16 +42,35 @@ class CustomModule(Module):
     """
     A custom module for testing.
     """
-    name: ClassVar[str] = "CUSTOM"
+    name: ClassVar[str] = "CUSTOMA"
     version: ClassVar[str] = "0.0.4"
     
 
 logger.info(CustomModule)
 
+class CustomPackage(Package):
+    """
+    A custom package for testing.
+    """
+    name: ClassVar[str] = "CUSTOMB"
+    version: ClassVar[str] = "0.0.4"
+
+logger.info(CustomPackage)
+
+class CustomProject(Project):
+    """
+    A custom project for testing.
+    """
+    name: ClassVar[str] = "CUSTOMC"
+    version: ClassVar[str] = "0.0.4"
+
+logger.info(CustomProject)
+
+
 # log all class variables
-for attr in dir(CustomModule):
-    if not attr.startswith('_'):
-        value = getattr(CustomModule, attr)
-        logger.info(f"{attr}: {value}")
+#for attr in dir(CustomModule):
+#    if not attr.startswith('_'):
+#        value = getattr(CustomModule, attr)
+#        logger.info(f"{attr}: {value}")
 
 
