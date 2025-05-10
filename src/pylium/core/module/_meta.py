@@ -15,10 +15,11 @@ class _ModuleMeta(ABCMeta):
             # Accessing them might trigger their resolution if accessed for the first time here
             # though __init_subclass__ should have handled it for defined subclasses.
             name = getattr(cls, 'name', cls.__name__) # Fallback to cls.__name__ if 'name' isn't resolved
-            type_val = getattr(cls, 'type', 'N/A')
-            fqn = getattr(cls, 'fqn', 'N/A')
-            role = getattr(cls, 'role', 'N/A')
-            return f"{cls.__name__} (Pylium Class: Name='{name}', Type='{type_val}', Role='{role}', FQN='{fqn}')"
+            type_val = getattr(cls, 'type', 'unknown_type')
+            role_val = getattr(cls, 'role', 'unknown_role')
+            fqn_val = getattr(cls, 'fqn', 'unknown_fqn')
+            version_val = getattr(cls, 'version', 'unknown_version')
+            return f"{cls.__name__} (Pylium Class: Name='{name}', Version='{version_val}', Type='{type_val}', Role='{role_val}', FQN='{fqn_val}')"
         except AttributeError:
             # Fallback if attributes aren't set, which shouldn't happen for fully init'd subclasses
             return super().__str__(cls)

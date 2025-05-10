@@ -4,7 +4,7 @@ from ._attrs import _ModuleType, _ModuleRole, _ModuleAttribute, _ModuleDependenc
 from abc import ABC
 import sys
 import os
-from typing import ClassVar, List, Optional, Type
+from typing import ClassVar, List, Optional, Type, Any
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -22,11 +22,16 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
     ChangelogEntry = _ChangelogEntry # Expose for type hinting / usage
 
     # Attributes managed by descriptors
-    version: ClassVar[str] = Attribute(default="0.0.0")
+    version: ClassVar[str] = Attribute(
+        processor=lambda cls: cls.changelog[0].version if cls.changelog and isinstance(cls.changelog, list) and len(cls.changelog) > 0 and hasattr(cls.changelog[0], 'version') else "0.0.0",
+        requires=["changelog"]
+    )
     description: ClassVar[str] = Attribute(
         processor=lambda cls: cls.__doc__.strip() if hasattr(cls, '__doc__') and isinstance(cls.__doc__, str) else ""
     )
-    dependencies: ClassVar[List[Dependency]] = Attribute(default_factory=list)
+    dependencies: ClassVar[List[Dependency]] = Attribute(
+        default_factory=list
+    )
     authors: ClassVar[List[AuthorInfo]] = Attribute(default_factory=list)
     changelog: ClassVar[List[ChangelogEntry]] = Attribute(default_factory=list)
 
@@ -64,53 +69,40 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
         super().__init_subclass__(**kwargs)
 
         ordered_attrs_to_resolve = [
-            "name", "file", "version", "description", "dependencies", 
-            "authors", "changelog", "fqn", "type", "role"
+            "name", "file", "description", "dependencies", 
+            "authors", "changelog", "version", "fqn", "type", "role"
         ]
 
         for attr_name in ordered_attrs_to_resolve:
-            # Find the ModuleAttribute descriptor instance. It should be on _ModuleBase
-            # or one of its direct bases if we change where these are defined.
-            # For simplicity, assuming they are on a known base or discoverable.
-            # We need to ensure we are calling the __get__ of the *original descriptor*.
-            
-            descriptor_found = False
-            value_to_set = None
+            val_directly_on_cls = cls.__dict__.get(attr_name)
 
-            # Check if attr_name is explicitly defined in cls body and is NOT a ModuleAttribute itself.
-            # If so, that value takes precedence and descriptor logic is skipped for this cls.
-            if attr_name in cls.__dict__ and not isinstance(cls.__dict__[attr_name], _ModuleBase.Attribute):
-                # This attribute was explicitly overridden with a concrete value in the subclass body.
-                # No need to call descriptor; getattr will just return this value.
-                # We still call getattr once to ensure it's properly part of the class state if needed,
-                # though for simple ClassVars it's already there.
-                _ = getattr(cls, attr_name)
-                descriptor_found = True # Mark as handled, even if not by our descriptor path
+            if val_directly_on_cls is not None and not isinstance(val_directly_on_cls, _ModuleBase.Attribute):
+                # Case 1: cls explicitly defines a concrete value.
+                # Ensure it's set on the class. If it was a simple ClassVar = value, it's already effectively there.
+                # For consistency and to ensure "baking", we can do setattr.
+                setattr(cls, attr_name, val_directly_on_cls)
             else:
-                # It could be an inherited concrete value, or an inherited descriptor.
+                # Case 2: cls does not define an explicit concrete value in its __dict__,
+                # OR val_directly_on_cls is an _ModuleAttribute instance (cls redefines the descriptor).
                 
-                current_value_on_cls = getattr(cls, attr_name) # How Python sees it via MRO
+                # Get the value as Python sees it via MRO. This could be:
+                # - a concrete value inherited from a parent (e.g., Module.type = Type.MODULE)
+                # - a descriptor instance (e.g., _ModuleBase.description if not overridden)
+                # - the descriptor instance defined on cls itself (if val_directly_on_cls was a descriptor)
+                value_via_mro = getattr(cls, attr_name)
 
-                if isinstance(current_value_on_cls, _ModuleBase.Attribute):
-                    # It's still a descriptor when looked up on cls. This means it's the original
-                    # descriptor from _ModuleBase, and no intermediate parent (like Module)
-                    # has set a concrete value for it yet that CustomModule would inherit directly.
-                    # So, we need to resolve it for 'cls'.
-                    original_descriptor = current_value_on_cls 
-                    value_to_set = original_descriptor.__get__(None, cls)
-                    setattr(cls, attr_name, value_to_set)
-                    descriptor_found = True
+                if isinstance(value_via_mro, _ModuleBase.Attribute):
+                    # The attribute on cls (via MRO) is still a _ModuleAttribute descriptor.
+                    # This means it's the one from _ModuleBase, or one defined in an intermediate parent,
+                    # or one defined in cls itself (if val_directly_on_cls was an Attribute instance).
+                    # We resolve *this specific descriptor instance* for cls.
+                    descriptor_to_resolve = value_via_mro
+                    resolved_value = descriptor_to_resolve.__get__(None, cls)
+                    setattr(cls, attr_name, resolved_value)
                 else:
-                    # getattr(cls, attr_name) returned a concrete value. This means 'cls'
-                    # either defined it concretely (already handled by the 'if' above, but defensive)
-                    # or an intermediate parent (like Module) defined it concretely, and 'cls'
-                    # is inheriting that concrete value. We should respect this inherited concrete value.
-                    # No explicit setattr(cls,...) needed here, as standard inheritance handles it.
-                    # We just mark it as "handled" for our loop.
-                    descriptor_found = True 
-
-            if not descriptor_found:
-                 logger.warning(f"Could not find or resolve attribute '{attr_name}' for {cls.__name__}")
+                    # It's a concrete value, inherited from a parent (e.g., CustomModule inherits Module.type).
+                    # Bake this inherited concrete value onto cls.
+                    setattr(cls, attr_name, value_via_mro)
 
         # After all attributes are resolved, check for mandatory 'type' in concrete subclasses
         # __abstractmethods__ is a frozenset of names of abstract methods.
@@ -130,7 +122,7 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
         pass
 
     def __str__(self):
-        return f"{self.__class__.__name__}: {self.name} (Type: {self.type}, FQN: {self.fqn})"
+        return f"{self.__class__.__name__}: {self.name} (Type: {self.type}, FQN: {self.fqn}, Version: {self.version})"
     
     def __repr__(self):
-        return f"{self.__class__.__name__}(name='{self.name}', type='{self.type}', fqn='{self.fqn}', file='{self.file}')"
+        return f"{self.__class__.__name__}(name='{self.name}', type='{self.type}', fqn='{self.fqn}', file='{self.file}', version='{self.version}')"
