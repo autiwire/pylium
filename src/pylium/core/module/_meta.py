@@ -22,6 +22,7 @@ class _ModuleMeta(ABCMeta):
             return f"{cls.__name__} (Pylium Class: Name='{name}', Version='{version_val}', Type='{type_val}', Role='{role_val}', FQN='{fqn_val}')"
         except AttributeError:
             # Fallback if attributes aren't set, which shouldn't happen for fully init'd subclasses
+            logger.warning(f"ModuleMeta __str__: Attributes not set for {cls.__name__}")
             return super().__str__(cls)
 
     def __repr__(cls):
@@ -30,4 +31,5 @@ class _ModuleMeta(ABCMeta):
             name = getattr(cls, 'name', cls.__name__)
             return f"<PyliumModuleClass '{name}' (Module: {cls.__module__}.{cls.__name__})>"
         except AttributeError:
+            logger.warning(f"ModuleMeta __repr__: Attributes not set for {cls.__name__}")
             return super().__repr__(cls)

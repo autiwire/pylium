@@ -1,17 +1,37 @@
 # Pylium Component Base
 
-from ._module import ComponentModule
+from pylium.core.module import Module
 
 import threading
-from typing import ClassVar
-
+from typing import ClassVar, List
+import datetime
 import logging
-import importlib
-logger = logging.getLogger(__name__)
+
+class ComponentBaseModule(Module):
+    """
+    Base module for Pylium components
+    """
+    authors: ClassVar[List[Module.AuthorInfo]] = [
+        Module.AuthorInfo(name="Rouven Raudzus", email="raudzus@autiwire.org", since_version="0.0.1", since_date=datetime.date(2025, 5, 10))
+    ]
+    changelog: ClassVar[List[Module.ChangelogEntry]] = [
+        Module.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=datetime.date(2025, 5, 10)),
+    ]
+
+logger = ComponentBaseModule.logger
 
 class ComponentBase:
     """
     Base class for Pylium core components
+
+    While pylium Module/Package/Project care for modules, compontents are classes constisting of a header and an implementation.
+    Header and implementation are in separate files, which are in the same directory. 
+    The header file is marked with a _h.py suffix, the implementation file is marked with a _impl.py suffix in a module,
+    in a package or in a project it would be the filename. x_h.py and x_impl.py -> x/_.h and x/_.impl.py
+
+    The component base class is used to define the component interface and to load the implementation.
+    The implementation is loaded lazily on first use (class instantiation).
+
     """
 
     # Per-class implementation setting - set this to True in impl classes
@@ -21,12 +41,9 @@ class ComponentBase:
     _cls_logger: ClassVar[logging.LoggerAdapter] = None
     _cls_logger_mutex: ClassVar[threading.Lock] = threading.Lock()
 
+    """
     @classmethod
     def pylium(cls) -> 'ComponentModule':
-        """
-        Get the ComponentModule instance ('pylium') for the module 
-        where this class is defined.
-        """
         module_name = cls.__module__
         try:
             module_obj = importlib.import_module(module_name)
@@ -49,6 +66,7 @@ class ComponentBase:
         except Exception as e:
              logger.error(f"Error retrieving pylium instance from {module_name}: {e}", exc_info=True)
              raise # Re-raise unexpected errors
+    """
 
     #@classmethod
     #def logger(cls) -> logging.LoggerAdapter:

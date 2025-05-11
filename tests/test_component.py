@@ -29,7 +29,7 @@ def test_component_instantiation_finds_impl():
     Tests that instantiating a header component correctly finds 
     and creates an instance of its implementation sibling.
     """
-    logger.info("Running test_component_instantiation_finds_impl...")
+    logger.debug("Running test_component_instantiation_finds_impl...")
     
     # Arrange: Define args and kwargs
     test_args = (1, 2)
@@ -46,19 +46,5 @@ def test_component_instantiation_finds_impl():
     assert instance.args == test_args
     assert instance.kwargs == test_kwargs
     
-    logger.info("Test test_component_instantiation_finds_impl passed.")
+    logger.debug("Test test_component_instantiation_finds_impl passed.")
 
-def test_component_module_search():
-    """
-    Tests that the component module search works correctly.
-    """
-    logger.info("Running test_component_module_search...")
-    component_modules = Component._get_all_component_modules()
-    assert len(component_modules) > 0, "Expected at least one component module"
-    logger.info(f"Found {len(component_modules)} component modules: ")
-    for module in component_modules:
-        logger.info(f"  Module: {module}")
-        logger.info(f"    Description: {module.description}")
-        logger.info(f"    Dependencies: {module.dependencies}")
-        logger.info(f"    Authors: {module.authors}")
-    logger.info("Test test_component_module_search passed.")

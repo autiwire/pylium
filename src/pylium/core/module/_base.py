@@ -7,8 +7,10 @@ import os
 from typing import ClassVar, List, Optional, Type, Any, Generator, Tuple
 import pkgutil
 import importlib
+import logging
 import typing
-import re # For normalizing pip package names
+import re 
+import datetime
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -17,7 +19,7 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
     """
     An abstract base class for all pylium modules.
     """
-   
+    Date = datetime.date
     Type = _ModuleType
     Role = _ModuleRole
     Attribute = _ModuleAttribute
@@ -83,6 +85,11 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
         requires=["file"]
     )
 
+    logger: ClassVar[logging.Logger] = Attribute(
+        processor=lambda cls: getLogger(cls.name),
+        requires=["name"]
+    )
+
     def __init_subclass__(cls, **kwargs) -> None:
         logger.debug(f"Module __init_subclass__ for: {cls.__name__}")
         super().__init_subclass__(**kwargs)
@@ -102,46 +109,31 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
             # Priority 1: Check if the attribute is one that must always re-run its _ModuleBase processor.
             if attr_name in attrs_that_always_reprocess_processor:
                 original_descriptor_on_base = _ModuleBase.__dict__.get(attr_name)
-                # DIAGNOSTIC: What is original_descriptor_on_base for 'dependencies'?
-                # if attr_name == 'dependencies':
-                #     logger.debug(f"  INIT_SUBCLASS ({cls.__name__}): For 'dependencies', _ModuleBase.__dict__.get('dependencies') is: {original_descriptor_on_base}, type: {type(original_descriptor_on_base)}")
                 
                 if isinstance(original_descriptor_on_base, _ModuleBase.Attribute):
-                    resolved_value = original_descriptor_on_base.__get__(None, cls) # This calls the attribute's processor
-                    setattr(cls, attr_name, resolved_value)
-                    # if attr_name == 'dependencies': # DIAGNOSTIC
-                    #     logger.debug(f"  POST-SETATTR (always_reprocess) for {cls.__name__}.dependencies: value in __dict__ is {cls.__dict__.get('dependencies')}") # DIAGNOSTIC
+                    val_from_base_processor = original_descriptor_on_base.__get__(None, cls) # Call __get__ on the descriptor from _ModuleBase
+                    
+                    setattr(cls, attr_name, val_from_base_processor)
+                    
+            # Priority 2: Use the _ModuleBase.Attribute.resolve_for_class mechanism
+            elif attr_name in _ModuleBase.__dict__:
+                # Priority 2: If not always reprocessed, check for explicit concrete value on cls.
+                val_explicitly_on_cls = cls.__dict__.get(attr_name)
+                if val_explicitly_on_cls is not None and not isinstance(val_explicitly_on_cls, _ModuleBase.Attribute):
+                    setattr(cls, attr_name, val_explicitly_on_cls)
                     continue # Value set, move to next attribute
+
+                # Priority 3: Standard MRO-based resolution (inherited concrete value or resolve inherited/own descriptor).
+                value_via_mro = getattr(cls, attr_name)
+                if isinstance(value_via_mro, _ModuleBase.Attribute):
+                    # Attribute is still a descriptor; resolve it.
+                    descriptor_to_resolve = value_via_mro
+                    resolved_value = descriptor_to_resolve.__get__(None, cls)
+                    setattr(cls, attr_name, resolved_value)
                 else:
-                    # Config error: listed for reprocessing but not a _ModuleAttribute on _ModuleBase.
-                    logger.warning(
-                        f"Configuration warning: Attribute '{attr_name}' in 'attrs_that_always_reprocess_processor' "
-                        f"but not a _ModuleAttribute on _ModuleBase. Falling back for {cls.__name__}."
-                    )
-                    # Fall through to standard handling below
+                    # Attribute is an inherited concrete value; use it.
+                    setattr(cls, attr_name, value_via_mro)
             
-            # Priority 2: If not always reprocessed, check for explicit concrete value on cls.
-            val_explicitly_on_cls = cls.__dict__.get(attr_name)
-            if val_explicitly_on_cls is not None and not isinstance(val_explicitly_on_cls, _ModuleBase.Attribute):
-                setattr(cls, attr_name, val_explicitly_on_cls)
-                # if attr_name == 'dependencies': # DIAGNOSTIC
-                #     logger.debug(f"  POST-SETATTR (explicit_on_cls) for {cls.__name__}.dependencies: value in __dict__ is {cls.__dict__.get('dependencies')}") # DIAGNOSTIC
-                continue # Value set, move to next attribute
-
-            # Priority 3: Standard MRO-based resolution (inherited concrete value or resolve inherited/own descriptor).
-            value_via_mro = getattr(cls, attr_name)
-            if isinstance(value_via_mro, _ModuleBase.Attribute):
-                # Attribute is still a descriptor; resolve it.
-                descriptor_to_resolve = value_via_mro
-                resolved_value = descriptor_to_resolve.__get__(None, cls)
-                setattr(cls, attr_name, resolved_value)
-            else:
-                # Attribute is an inherited concrete value; use it.
-                setattr(cls, attr_name, value_via_mro)
-            
-            # if attr_name == 'dependencies': # DIAGNOSTIC for the MRO path
-            #     logger.debug(f"  POST-SETATTR (mro_fallback) for {cls.__name__}.dependencies: value in __dict__ is {cls.__dict__.get('dependencies')}") # DIAGNOSTIC
-
 
         # After all attributes are resolved, check for mandatory 'type' in concrete subclasses
         # __abstractmethods__ is a frozenset of names of abstract methods.
@@ -294,8 +286,8 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
                     if not file_name.endswith(".py"):
                         continue
                     
-                    if file_name.endswith("_impl.py"):
-                        logger.debug(f"    list: Skipping impl file: '{os.path.join(subdir, file_name)}'")
+                    if file_name.endswith("_impl.py") or file_name == "_version.py":
+                        logger.debug(f"    list: Skipping impl or version file: '{os.path.join(subdir, file_name)}'")
                         continue
 
                     full_file_path = os.path.join(subdir, file_name)
@@ -329,10 +321,10 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
                     # or if walk_root_dir (or its parent) is in sys.path.
                     # If walk_root_dir is like '.../project/src', then modules like 'pylium.core' should be importable.
                     
-                    logger.debug(f"    list: Attempting to import module: '{module_name_to_import}' from file '{full_file_path}'")
+                    #logger.debug(f"    list: Attempting to import module: '{module_name_to_import}' from file '{full_file_path}'")
                     try:
                         module = importlib.import_module(module_name_to_import)
-                        logger.debug(f"      list: Successfully imported '{module_name_to_import}'")
+                        #logger.debug(f"      list: Successfully imported '{module_name_to_import}'")
                     except ImportError as e:
                         logger.warning(f"      list: Could not import module '{module_name_to_import}' from '{full_file_path}': {e}. "
                                        f"Ensure the parent of '{module_name_parts[0]}' (derived from source root '{walk_root_dir}') is in sys.path.")
@@ -362,8 +354,8 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
                     
                     found_module_types.extend(defined_in_this_module)
 
-        logger.info(f"list: Completed scan for '{cls.__name__}'. Found {len(found_module_types)} matching module types: "
-                    f"{[t.__module__ + '.' + t.__name__ for t in found_module_types]}")
+        #logger.info(f"list: Completed scan for '{cls.__name__}'. Found {len(found_module_types)} matching module types: "
+        #            f"{[t.__module__ + '.' + t.__name__ for t in found_module_types]}")
         return found_module_types
 
     @staticmethod
@@ -456,7 +448,7 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
                  pass # Keep as is
             # If len is 2 e.g. "22.04" keep as is
 
-        logger.info(f"_get_current_os_info: Detected OS: {distro_id}, Version: {distro_version_id}")
+        logger.debug(f"_get_current_os_info: Detected OS: {distro_id}, Version: {distro_version_id}")
         return distro_id, distro_version_id
 
     @classmethod
@@ -542,14 +534,17 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
                     except Exception as e:
                         logger.error(f"    Error reading system dependency file {dep_file_path}: {e}")
                 else:
-                    logger.debug(f"    System dependency file not found for '{pip_pkg_name}': {dep_file_path}")
+                    #logger.debug(f"    System dependency file not found for '{pip_pkg_name}': {dep_file_path}")
+                    pass
             
             if found_for_pip_pkg:
                 all_sys_deps.update(current_sys_deps_for_pip_pkg)
-                logger.debug(f"      Added system deps for '{pip_pkg_name}': {current_sys_deps_for_pip_pkg}")
+                #logger.debug(f"      Added system deps for '{pip_pkg_name}': {current_sys_deps_for_pip_pkg}")
+                pass
             else:
-                logger.debug(f"    No system dependency file found or file was empty for Pip package '{pip_pkg_name}' on {final_distro_name_str}/{final_distro_version_str} (checked {path1} and {path2})")
+                #logger.debug(f"    No system dependency file found or file was empty for Pip package '{pip_pkg_name}' on {final_distro_name_str}/{final_distro_version_str} (checked {path1} and {path2})")
+                pass
 
         final_list = sorted(list(all_sys_deps))
-        logger.info(f"get_system_dependencies for {cls.__name__} on {final_distro_name_str} {final_distro_version_str}: Found {len(final_list)} system dependencies: {final_list}")
+        #logger.debug(f"get_system_dependencies for {cls.__name__} on {final_distro_name_str} {final_distro_version_str}: Found {len(final_list)} system dependencies: {final_list}")
         return final_list
