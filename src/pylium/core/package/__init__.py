@@ -15,9 +15,6 @@ class Package(Module):
         Module.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=datetime.date(2025, 5, 10)),
         Module.ChangelogEntry(version="0.0.2", notes=["Added dependency"], date=datetime.date(2025, 5, 10)),
     ]
-    dependencies: ClassVar[List[Module.Dependency]] = [
-        Module.Dependency(name="pydanticX", type=Module.Dependency.Type.PIP, version="2.10.2")
-    ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

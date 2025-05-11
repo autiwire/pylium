@@ -54,3 +54,4 @@ logger.info("Listing all modules:")
 for cls in Module.list():
     logger.info(f"Module: {cls.__name__}")
     logger.debug(f"  Module: {cls}")
+    logger.debug(f"    Dependencies: {cls.get_system_dependencies()}")

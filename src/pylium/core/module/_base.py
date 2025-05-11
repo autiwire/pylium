@@ -4,10 +4,11 @@ from ._attrs import _ModuleType, _ModuleRole, _ModuleAttribute, _ModuleDependenc
 from abc import ABC
 import sys
 import os
-from typing import ClassVar, List, Optional, Type, Any, Generator
+from typing import ClassVar, List, Optional, Type, Any, Generator, Tuple
 import pkgutil
 import importlib
 import typing
+import re # For normalizing pip package names
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -23,6 +24,16 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
     Dependency = _ModuleDependency
     AuthorInfo = _ModuleAuthorInfo
     ChangelogEntry = _ChangelogEntry # Expose for type hinting / usage
+
+    # Determine project root and path to pip2sysdep data
+    # Assuming _base.py is at .../project_root/src/pylium/core/module/_base.py
+    # And pip2sysdep is at .../project_root/external/pip2sysdep
+    _module_base_file_dir = os.path.dirname(__file__)
+    _project_root_dir = os.path.abspath(os.path.join(_module_base_file_dir, '..', '..', '..', '..'))
+    _pip2sysdep_data_path: ClassVar[str] = os.path.join(_project_root_dir, 'external', 'pip2sysdep', 'data')
+    
+    logger.debug(f"_ModuleBase: Calculated project root for pip2sysdep: {_project_root_dir}")
+    logger.debug(f"_ModuleBase: Path to pip2sysdep data: {_pip2sysdep_data_path}")
 
     # Attributes managed by descriptors
     version: ClassVar[str] = Attribute(
@@ -354,3 +365,191 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
         logger.info(f"list: Completed scan for '{cls.__name__}'. Found {len(found_module_types)} matching module types: "
                     f"{[t.__module__ + '.' + t.__name__ for t in found_module_types]}")
         return found_module_types
+
+    @staticmethod
+    def _get_current_os_info() -> Tuple[Optional[str], Optional[str]]:
+        """
+        Attempts to determine the current OS distribution and version.
+        Reads /etc/os-release first, then falls back to /etc/issue.
+        Returns:
+            A tuple (distribution_name, distribution_version).
+            Values can be None if detection fails.
+        """
+        distro_id: Optional[str] = None
+        distro_version_id: Optional[str] = None
+
+        # Try /etc/os-release first (standard for many modern distros)
+        if os.path.exists("/etc/os-release"):
+            try:
+                with open("/etc/os-release", "r") as f:
+                    os_release_vars = {}
+                    for line in f:
+                        line = line.strip()
+                        if '=' in line and not line.startswith('#'):
+                            key, value = line.split('=', 1)
+                            # Remove quotes from value if present
+                            if value.startswith(('"', "'")) and value.endswith(('"', "'")) and len(value) > 1:
+                                value = value[1:-1]
+                            os_release_vars[key.upper()] = value
+                    
+                    distro_id = os_release_vars.get("ID")
+                    distro_version_id = os_release_vars.get("VERSION_ID")
+                    logger.debug(f"_get_current_os_info: From /etc/os-release - ID='{distro_id}', VERSION_ID='{distro_version_id}'")
+            except Exception as e:
+                logger.warning(f"_get_current_os_info: Error reading /etc/os-release: {e}")
+        
+        # Fallback to /etc/issue if /etc/os-release didn't yield results
+        if not distro_id or not distro_version_id:
+            logger.debug(f"_get_current_os_info: /etc/os-release did not provide full info (ID: {distro_id}, Version: {distro_version_id}). Trying /etc/issue.")
+            if os.path.exists("/etc/issue"):
+                try:
+                    with open("/etc/issue", "r") as f:
+                        issue_content = f.readline().strip() # Usually first line is most relevant
+                    logger.debug(f"_get_current_os_info: /etc/issue content (first line): '{issue_content}'")
+                    
+                    # Try to parse /etc/issue (this can be very distro-specific)
+                    # Order of checks matters here.
+                    if not distro_id: # If ID still missing
+                        if re.search(r"ubuntu", issue_content, re.IGNORECASE):
+                            distro_id = "ubuntu"
+                        elif re.search(r"debian", issue_content, re.IGNORECASE):
+                            distro_id = "debian"
+                        elif re.search(r"fedora", issue_content, re.IGNORECASE):
+                            distro_id = "fedora"
+                        elif re.search(r"centos", issue_content, re.IGNORECASE):
+                            distro_id = "centos"
+                        elif re.search(r"alpine", issue_content, re.IGNORECASE):
+                            distro_id = "alpine"
+                        # Add more common distros as needed
+                        else: # Try a generic grab
+                            match_generic = re.match(r"([a-zA-Z]+)", issue_content)
+                            if match_generic:
+                                distro_id = match_generic.group(1).lower()
+                    
+                    if not distro_version_id: # If VERSION_ID still missing
+                        # Common patterns: "Ubuntu 22.04.3 LTS", "Fedora release 38 (Thirty Eight)"
+                        # "Debian GNU/Linux 12 (bookworm)", "Alpine Linux v3.18"
+                        match_version = re.search(r"(\d+\.\d+(\.\d+)*)", issue_content) # Major.Minor.Patch(es)
+                        if match_version:
+                            distro_version_id = match_version.group(1)
+                        else: # Try simpler \d+ for things like Fedora release 38
+                            match_simple_version = re.search(r"(\d+)", issue_content)
+                            if match_simple_version:
+                                distro_version_id = match_simple_version.group(1)
+                    logger.debug(f"_get_current_os_info: From /etc/issue (fallback) - Distro='{distro_id}', Version='{distro_version_id}'")
+
+                except Exception as e:
+                    logger.warning(f"_get_current_os_info: Error reading or parsing /etc/issue: {e}")
+            else:
+                logger.debug("_get_current_os_info: /etc/issue not found.")
+
+        if distro_id:
+            distro_id = distro_id.lower().strip()
+        
+        if distro_version_id:
+            # For versions like "22.04.3 LTS", we often just want "22.04" for directory matching.
+            # Take the first two components if it's a multi-part version.
+            version_parts = distro_version_id.split('.')
+            if len(version_parts) > 2:
+                distro_version_id = f"{version_parts[0]}.{version_parts[1]}"
+            elif len(version_parts) == 1: # e.g. "38" for Fedora
+                 pass # Keep as is
+            # If len is 2 e.g. "22.04" keep as is
+
+        logger.info(f"_get_current_os_info: Detected OS: {distro_id}, Version: {distro_version_id}")
+        return distro_id, distro_version_id
+
+    @classmethod
+    def get_system_dependencies(cls, distribution_name: Optional[str] = None, 
+                              distribution_version: Optional[str] = None) -> List[str]:
+        """
+        Retrieves a list of system-level package names required by this module's
+        declared Pip dependencies for a specific OS distribution and version.
+
+        If distribution_name or distribution_version are not provided, it attempts
+        to detect them from the current operating system.
+
+        Args:
+            distribution_name (Optional[str]): The lowercase name of the OS distribution (e.g., 'ubuntu', 'fedora').
+                                               If None, attempts to auto-detect.
+            distribution_version (Optional[str]): The version string for the OS distribution (e.g., '22.04', '38').
+                                                  If None, attempts to auto-detect.
+        Returns:
+            List[str]: A list of unique system package names.
+        """
+        detected_distro_name: Optional[str] = None
+        detected_distro_version: Optional[str] = None
+
+        if distribution_name is None or distribution_version is None:
+            detected_distro_name, detected_distro_version = cls._get_current_os_info()
+
+        final_distro_name = distribution_name if distribution_name is not None else detected_distro_name
+        final_distro_version = distribution_version if distribution_version is not None else detected_distro_version
+
+        if not final_distro_name or not final_distro_version:
+            logger.warning(
+                f"get_system_dependencies for {cls.__name__}: Could not determine OS distribution name or version. "
+                f"(Provided: name='{distribution_name}', version='{distribution_version}'; "
+                f"Detected: name='{detected_distro_name}', version='{detected_distro_version}'). "
+                "Cannot look up system dependencies."
+            )
+            return []
+        
+        # Ensure these are strings for path joining and logging after checks
+        final_distro_name_str = str(final_distro_name).lower().strip()
+        final_distro_version_str = str(final_distro_version).strip()
+
+        if not hasattr(cls, 'dependencies') or not isinstance(cls.dependencies, list):
+            logger.debug(f"get_system_dependencies: Class {cls.__name__} has no 'dependencies' list or it's not a list. Returning empty.")
+            return []
+
+        all_sys_deps = set()
+        
+        if not os.path.isdir(_ModuleBase._pip2sysdep_data_path):
+            logger.error(f"get_system_dependencies: Data directory not found at {_ModuleBase._pip2sysdep_data_path}. Cannot lookup system dependencies.")
+            return []
+        
+        logger.debug(f"get_system_dependencies for {cls.__name__} on {final_distro_name_str} {final_distro_version_str}:")
+        logger.debug(f"  Declared Pip dependencies: {[dep.name for dep in cls.dependencies if hasattr(dep, 'name')]}")
+
+        for pip_dep in cls.dependencies:
+            if not hasattr(pip_dep, 'name') or not isinstance(pip_dep.name, str):
+                logger.warning(f"  Skipping invalid pip dependency object: {pip_dep}")
+                continue
+            
+            pip_pkg_name = pip_dep.name.lower()
+            
+            found_for_pip_pkg = False
+            path1_parts = [_ModuleBase._pip2sysdep_data_path, final_distro_name_str, final_distro_version_str, f"{pip_pkg_name}.txt"]
+            path1 = os.path.join(*path1_parts)
+            
+            path2_parts = [_ModuleBase._pip2sysdep_data_path, final_distro_name_str, "_common_", f"{pip_pkg_name}.txt"]
+            path2 = os.path.join(*path2_parts)
+
+            paths_to_check = [path1, path2]
+            current_sys_deps_for_pip_pkg = [] # Renamed to avoid confusion
+
+            for dep_file_path in paths_to_check:
+                if os.path.exists(dep_file_path) and os.path.isfile(dep_file_path):
+                    logger.debug(f"    Found system dependency file for '{pip_pkg_name}': {dep_file_path}")
+                    try:
+                        with open(dep_file_path, 'r') as f:
+                            lines = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+                            if lines:
+                                current_sys_deps_for_pip_pkg.extend(lines)
+                                found_for_pip_pkg = True 
+                                break 
+                    except Exception as e:
+                        logger.error(f"    Error reading system dependency file {dep_file_path}: {e}")
+                else:
+                    logger.debug(f"    System dependency file not found for '{pip_pkg_name}': {dep_file_path}")
+            
+            if found_for_pip_pkg:
+                all_sys_deps.update(current_sys_deps_for_pip_pkg)
+                logger.debug(f"      Added system deps for '{pip_pkg_name}': {current_sys_deps_for_pip_pkg}")
+            else:
+                logger.debug(f"    No system dependency file found or file was empty for Pip package '{pip_pkg_name}' on {final_distro_name_str}/{final_distro_version_str} (checked {path1} and {path2})")
+
+        final_list = sorted(list(all_sys_deps))
+        logger.info(f"get_system_dependencies for {cls.__name__} on {final_distro_name_str} {final_distro_version_str}: Found {len(final_list)} system dependencies: {final_list}")
+        return final_list
