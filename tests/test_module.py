@@ -22,7 +22,7 @@ def _log_class(cls):
 #    logger.info(f"Object: {cls()}")
 #    logger.info("--------------------------------")
 
-    logger.info("\n\n")
+    logger.info("--------------------------------")
 
 
 _log_class(Module)
@@ -47,7 +47,10 @@ class CustomModule(Module):
         Module.Dependency(name="test-custom-dep", type=Module.Dependency.Type.PIP, version="1.33.7"),
     ]
     
-
 _log_class(CustomModule)
 
 
+logger.info("Listing all modules:")
+for cls in Module.list():
+    logger.info(f"Module: {cls.__name__}")
+    logger.debug(f"  Module: {cls}")

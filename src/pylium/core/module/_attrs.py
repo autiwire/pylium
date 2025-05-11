@@ -144,6 +144,10 @@ class _ModuleAttribute:
         # __init_subclass__ will be responsible for setattr-ing this onto the class.
         return value
     
+
+    def __str__(self):
+        return f"{self._public_name} = {self.default!r}"
+
     def __repr__(self):
         details = []
         # Use a sentinel for default to distinguish from None if None is a valid default
