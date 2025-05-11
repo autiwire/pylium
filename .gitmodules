@@ -1,0 +1,3 @@
+[submodule "external/pip2sysdep"]
+	path = external/pip2sysdep
+	url = git@github.com:autiwire/pip2sysdep.git
