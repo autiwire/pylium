@@ -51,7 +51,11 @@ _log_class(CustomModule)
 
 
 logger.info("Listing all modules:")
-for cls in Module.list():
+
+module_list = Module.list()
+module_list.append(CustomModule)
+
+for cls in module_list:
     logger.info(f"Module: {cls.__name__}")
     logger.debug(f"  Module: {cls}")
     logger.debug(f"    Dependencies: {cls.get_system_dependencies()}")
