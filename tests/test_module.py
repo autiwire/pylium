@@ -125,7 +125,7 @@ def test_module_list_default_scan():
 
     # Expected count based on known core modules inheriting from Module
     # (Module, Package, Project, InstallerPackage)
-    assert len(found_modules) > 3, f"Expected >3 core modules, found {len(found_modules)}"
+    assert len(found_modules) > 3, f"Expected at least 3 core modules, found {len(found_modules)}"
 
 
 def test_package_list_filters_by_subclass():
