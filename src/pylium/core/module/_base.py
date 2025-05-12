@@ -90,6 +90,11 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
         requires=["name"]
     )
 
+    cli: ClassVar[Optional[type]] = Attribute(
+        processor=lambda cls: None,
+        requires=["name"]
+    )
+
     def __init_subclass__(cls, **kwargs) -> None:
         logger.debug(f"Module __init_subclass__ for: {cls.__name__}")
         super().__init_subclass__(**kwargs)

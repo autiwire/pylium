@@ -255,6 +255,14 @@ def main_bootstrap():
     
 
 def main_venv():
+    # First check for a single argument "bootstrap" which updates the bootstrap packages
+    if len(sys.argv) == 2 and sys.argv[1] == "bootstrap":
+        logger.info("Updating bootstrap packages")
+        venv_abs_path, venv_created = create_or_confirm_venv(VENV_NAME)
+        venv_python = os.path.join(venv_abs_path, "bin", "python") 
+        install_package_into_venv(venv_python, BOOTSTRAP_PACKAGES, upgrade=True)
+        logger.info("Bootstrap packages updated")
+    
     logger.info(f"{Installer.__name__} @ {Installer._name()}^{Installer._version()}")
 
 def main():
