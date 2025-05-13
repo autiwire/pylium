@@ -27,4 +27,32 @@ class Module(_ModuleBase):
         _ModuleBase.Dependency(name="fire", type=_ModuleBase.Dependency.Type.PIP, version="0.5.0"),
     ]
 
+    @classmethod
+    def cli(cls, *args, **kwargs):
+        """
+        Entry point for CLI interface.
+
+        Here we dynamically create a CLI interface class for the module.
+
+        The interface is used to invoke the module's functionality, which 
+        itself is defined in "components" of the module. A module has to detect 
+        what kind of module it is (Bundle, Header, Implementation) and then
+        build the appropriate CLI interface from the components.
+
+        To find Compontent classes, search cases are:
+         - We are a Bundle, search in this module and header module for Component classes
+         - We are an Implementation, search in this module and header module for Component classes
+
+        
+
+        
+
+
+
+        
+        """
+
+        
+        pass
+
 __all__ = ["Module"]

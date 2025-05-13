@@ -1,11 +1,13 @@
 from . import Module
 
-pylium = Module("pylium", "0.1.0", "Pylium core module", [], [])
-
-
+from fire import Fire
 
 def main():
     print(Module("test"))
+
+    for m in Module.list():
+        print(m)
+
 
 if __name__ == "__main__":
     main()
