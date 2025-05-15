@@ -1,8 +1,4 @@
-from ._h import App
-from pylium.core.package import Package
-
-from typing import Any, Optional, ClassVar, Type, List
-
+from ._h import *
 
 class AppPackageImpl(Package):
     """
@@ -15,7 +11,7 @@ class AppPackageImpl(Package):
         Package.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=Package.Date(2025, 5, 15)),
     ]
     
-
+logger = AppPackageImpl.logger
 
 class AppImpl(App):
     """
@@ -24,18 +20,91 @@ class AppImpl(App):
 
     _is_impl = True
 
-    def run(self, run_mode: App.RunMode):
+    def run(self, run_mode: App.RunMode, cli_entry: Optional[Type[Module]|Type[Component]] = None):
         self._run_mode = run_mode
+        self._cli_entry = cli_entry
         self._run()
 
     def _run(self):
-        print(f"Running in {self._run_mode} mode")
+        logger.debug(f"Running in {self._run_mode} mode")
+        if self._run_mode == App.RunMode.CLI:
+            from ._cli import CLI
+            cli = CLI(self._cli_entry)
+            cli._run()
+        elif self._run_mode == App.RunMode.TASK:
+            logger.debug(f"Task entry: {self._task_entry}")
+            self._run_task()
+        elif self._run_mode == App.RunMode.API:
+            logger.debug(f"API entry: {self._api_entry}")
+            self._run_api()
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
 
 
+
+    """
+
+
+
+        # Get all components in this module
+        from pylium.core.component import Component
+        components = []        
+        for name in dir(cls.__module__):
+            obj = getattr(cls.__module__, name)
+            if isinstance(obj, Component):
+                components.append(obj)
+
+        print(components)
+
+        class CLI():
+            def __init__(self, x=3, verbose=False):
+                self.x = x
+                self.verbose = verbose
+                print("init")
+                if self.verbose:
+                    print("Verbose mode enabled.")
+                # print(args) # Removed for clarity with fire flags
+                # print(kwargs) # Removed for clarity with fire flags
+                pass
+
+            #def __call__(self, *args, **kwargs):
+            #    pass
+
+            def test(self):
+                print("test")
+
+            @classmethod
+            def test2(cls):
+                print("test2")
+
+            class _SubCLI():
+                def __init__(self, *args, **kwargs):
+                    pass
+
+                def test(self):
+                    print("test")
+
+            subcli = _SubCLI()
+            SUBCLIX = _SubCLI
+            
+            # def SUBCLIY():
+            #     return CLI._SubCLI()
+
+        class CLI2(CLI):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+
+            def test3(self):
+                print("test")
+
+        import fire
+        os.environ["PAGER"] = "cat"
+        fire.Fire(CLI, name=cls.name)
+
+    """
 
 #    apiClass: ClassVar[Optional[Type[Any]]] = _get_class_from_module("fastapi", FastAPI)
 #    celeryClass: ClassVar[Optional[Type[Any]]] = _get_class_from_module("celery", Celery)

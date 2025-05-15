@@ -1,7 +1,7 @@
-from pylium.core.package import Package
+from pylium.core.package import Package, Module
 from pylium.core.component import Component
 
-from typing import ClassVar, List, Optional
+from typing import ClassVar, List, Optional, Type
 import enum
 
 class AppPackageHeader(Package):
@@ -24,7 +24,13 @@ class AppPackageHeader(Package):
 class AppRunMode(enum.Enum):
     CLI = "cli"
     API = "api"
-    WEB = "web"
+    TASK = "task"
+
+    def __str__(self):
+        return self.value
+    
+    def __repr__(self):
+        return self.value
 
 class App(Component):
     """
@@ -36,7 +42,7 @@ class App(Component):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def run(self, run_mode: RunMode):
+    def run(self, run_mode: RunMode, cli_entry: Optional[Type[Module]|Type[Component]] = None):
         raise NotImplementedError("Implement this method in implementation class")
 
 

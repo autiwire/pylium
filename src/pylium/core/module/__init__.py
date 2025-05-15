@@ -30,101 +30,11 @@ class Module(_ModuleBase):
     @classmethod
     def cli(cls, *args, **kwargs):
         """
-        Entry point for CLI interface.
-
-        Here we dynamically create a CLI interface class for the module.
-
-        The interface is used to invoke the module's functionality, which 
-        itself is defined in "components" of the module. A module has to detect 
-        what kind of module it is (Bundle, Header, Implementation) and then
-        build the appropriate CLI interface from the components.
-
-        Bundle:
-         - Search for Component classes in this module and header module
-         - Create a CLI interface class that bundles the components
-
-        Header:
-         - Search for Component classes in this module
-         - Create a CLI interface that delivers information about the module
-
-        Implementation:
-         - Search for Component classes in this module
-         - Create a CLI interface that delivers information about the implementation
-
-        CLI commands should be always invoked over a bundle, e.g.
-        for python3 -m pylium.core.example it should be a Bundle defined in 
-        pylium/core/example/__init__.py or pylium/core/example.py.
-
-        Scan bundle and - if existing - header module for Component classes.
-        
-
-        
+        Entry point for CLI interface. Here we start the App with the CLI mode and the current module as the CLI entry.
         """
 
-        # TEST
         from pylium.core.app import App
         app = App()
-        app.run(App.RunMode.CLI)
-
-
-        return
-
-        
-
-
-        # Get all components in this module
-        from pylium.core.component import Component
-        components = []        
-        for name in dir(cls.__module__):
-            obj = getattr(cls.__module__, name)
-            if isinstance(obj, Component):
-                components.append(obj)
-
-        print(components)
-
-        class CLI():
-            def __init__(self, x=3, verbose=False):
-                self.x = x
-                self.verbose = verbose
-                print("init")
-                if self.verbose:
-                    print("Verbose mode enabled.")
-                # print(args) # Removed for clarity with fire flags
-                # print(kwargs) # Removed for clarity with fire flags
-                pass
-
-            #def __call__(self, *args, **kwargs):
-            #    pass
-
-            def test(self):
-                print("test")
-
-            @classmethod
-            def test2(cls):
-                print("test2")
-
-            class _SubCLI():
-                def __init__(self, *args, **kwargs):
-                    pass
-
-                def test(self):
-                    print("test")
-
-            subcli = _SubCLI()
-            SUBCLIX = _SubCLI
-            
-            # def SUBCLIY():
-            #     return CLI._SubCLI()
-
-        class CLI2(CLI):
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-
-            def test3(self):
-                print("test")
-
-        import fire
-        os.environ["PAGER"] = "cat"
-        fire.Fire(CLI, name=cls.name)
+        app.run(App.RunMode.CLI, cls)
 
 __all__ = ["Module"]
