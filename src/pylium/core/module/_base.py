@@ -91,7 +91,7 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
     )
 
     @classmethod
-    def shortname(cls) -> str:
+    def basename(cls) -> str:
         """
         Returns the basename of the module name without _h or _impl suffixes.
         """
@@ -108,6 +108,15 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
             ret = ret[:-5]
 
         return ret
+
+    @classmethod
+    def shortname(cls) -> str:
+        """
+        Returns the shortname of the module name without _h or _impl suffixes.
+
+        Shortname is only the last part of the name, without the package prefix.
+        """
+        return cls.basename().split(".")[-1]
 
     def __init_subclass__(cls, **kwargs) -> None:
         logger.debug(f"Module __init_subclass__ for: {cls.__name__}")
@@ -226,6 +235,59 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
         # logger.debug(f"  _process_additive_dependencies: Final deps for {cls.__name__}: {final_list}")
         return final_list
     
+    @classmethod
+    def cli(cls, *args, **kwargs):
+        """
+        Entry point for CLI interface. Here we start the App with the CLI mode and the current module as the CLI entry.
+        """
+
+        from pylium.core.app import App
+        app = App()
+        app.run(App.RunMode.CLI, cls)
+
+    @classmethod
+    def list_submodules(cls) -> List[typing.Type["_ModuleBase"]]:
+        """
+        Return a list of all submodules of this module. 
+        """
+
+        file_dir = os.path.dirname(cls.file)
+        if file_dir.endswith("__init__.py"):
+            file_dir = os.path.dirname(file_dir)
+
+        # We are a module, so find submodules with pkgutil
+        print(f"shortname: {cls.basename()}")
+        print(f"file_dir: {file_dir}")
+        found_module_types: List[typing.Type["_ModuleBase"]] = []
+        for submodule in pkgutil.iter_modules([file_dir]):
+            
+            # skip _impl.py and _version.py
+            if submodule.name.endswith("_impl") or submodule.name.endswith("_version"):
+                continue
+            if submodule.name.startswith("_"):
+                continue
+            
+            full_name = f"{cls.name}.{submodule.name}"
+            logger.info(f"submodule: {full_name}")
+            module = importlib.import_module(full_name)
+            print(f"module: {module}")
+
+            # Parse module for subclasses of _ModuleBase
+            for attr_name in dir(module):
+                try:
+                    obj = getattr(module, attr_name)
+                    # Check if it's a class and defined in this module
+                    if isinstance(obj, type) and obj.__module__ == module.__name__:
+                        print(f"Found locally defined class: {attr_name}")
+                        if issubclass(obj, _ModuleBase):
+                            logger.info(f"Found _ModuleBase subclass: {obj}")
+                            found_module_types.append(obj)
+                except Exception as e:
+                    logger.warning(f"Error checking attribute {attr_name}: {e}")
+                    continue
+
+        return found_module_types
+
     @classmethod
     def list(cls) -> List[typing.Type["_ModuleBase"]]:
         """
@@ -574,7 +636,7 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
         Returns the implementation module for this module.
         """
 
-        possible_impl_modules = [cls.shortname(), cls.shortname() + "_impl", cls.shortname() + "._impl"]
+        possible_impl_modules = [cls.basename(), cls.basename() + "_impl", cls.basename() + "._impl"]
 
         for module_name in possible_impl_modules:
             logger.debug(f"get_implementation_module: Checking module {module_name}")

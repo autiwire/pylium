@@ -1,13 +1,11 @@
 """
-Pylium Core Components
-
-This module contains the base classes for core components of Pylium.
+Pylium Components
 
 The Component class is the base class for all Pylium components.
 
 """
 
-from ._h import Component, Package, ClassVar, List
+from ._h import *
 
 class ComponentPackage(Package):
     """
@@ -20,4 +18,6 @@ class ComponentPackage(Package):
         Package.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=Package.Date(2025, 5, 10)),
     ]
    
-__all__ = ["Component"]
+__all__ = ["Component", "ComponentPackage"] 
+
+

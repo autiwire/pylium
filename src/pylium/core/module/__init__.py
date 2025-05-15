@@ -27,14 +27,4 @@ class Module(_ModuleBase):
         _ModuleBase.Dependency(name="fire", type=_ModuleBase.Dependency.Type.PIP, version="0.5.0"),
     ]
 
-    @classmethod
-    def cli(cls, *args, **kwargs):
-        """
-        Entry point for CLI interface. Here we start the App with the CLI mode and the current module as the CLI entry.
-        """
-
-        from pylium.core.app import App
-        app = App()
-        app.run(App.RunMode.CLI, cls)
-
 __all__ = ["Module"]

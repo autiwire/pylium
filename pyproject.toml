@@ -22,9 +22,9 @@ dependencies = [
 #    "virtualenv>=20.0.0",
 #]
 
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["pylium.*"]
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["pylium", "pylium.core"]
 
 [tool.setuptools_scm]
 write_to = "src/pylium/_version.py"

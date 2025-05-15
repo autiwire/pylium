@@ -1,6 +1,7 @@
 from ._h import *
 
 import os
+import pkgutil
 
 class CLIModule(Module):
     authors: ClassVar[List[Module.AuthorInfo]] = [
@@ -21,20 +22,37 @@ class CLI():
 
         if self._cli_entry:
             if issubclass(self._cli_entry, Module):
-                self._init_module()
+                self._init_module_cli()
             elif issubclass(self._cli_entry, Component):
-                self._init_component()
+                self._init_component_cli()
             else:
                 raise ValueError(f"Invalid CLI entry type: {self._cli_entry}")
 
-    def _init_module(self):
+    def _init_module_cli(self):
         def test():
-            print("test")
+            print(f"Module: {self._cli_entry}")
 
         self.test = test
+        self.test2 = test
+        self._cli_name = self._cli_entry.name
+        
+        # We are a module, so find submodules with pkgutil
+
+        logger.info(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+    
+        for submodule in self._cli_entry.list_submodules():            
+            logger.info(f"Submodule: {submodule}")
+
+            # Only add submodules which are a bundle
+            if submodule.role == Module.Role.BUNDLE:
+                setattr(self, submodule.shortname(), CLI(submodule, submodule.basename()))
+    
+        logger.info(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+
+        
 
 
-    def _init_component(self):
+    def _init_component_cli(self):
         pass
 
     def _run(self):

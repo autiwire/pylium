@@ -1,4 +1,12 @@
-from ._h import App, Package, ClassVar, List
+"""
+Pylium Core App
+
+This module contains the core functionality of the application.
+It is used to create a CLI interface for the application as well as serving 
+fastapi endpoints and celery tasks.
+"""
+
+from ._h import *
 
 class AppPackage(Package):
     """
@@ -11,4 +19,4 @@ class AppPackage(Package):
         Package.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=Package.Date(2025, 5, 15)),
     ]
 
-__all__ = ["App"]
+__all__ = ["App", "AppPackage"]

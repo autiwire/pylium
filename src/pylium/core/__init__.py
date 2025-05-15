@@ -1,7 +1,5 @@
-from .package import Package
-from .component import Component
 
-from typing import Type, ClassVar, Optional, List
+from ._h import *
 
 class CorePackage(Package):
     authors: ClassVar[List[Package.AuthorInfo]] = [
@@ -11,13 +9,4 @@ class CorePackage(Package):
         Package.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=Package.Date(2025, 5, 14)),
     ]
 
-class Core(Component):
-    """
-    Core component
-    """
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.logger.debug(f"Initializing Core: {self.name}")
-
-__all__ = ["Core"]
+__all__ = ["Core", "CorePackage"]

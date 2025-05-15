@@ -1,8 +1,11 @@
-from ._h import *
+from pylium.core.package import Package
+from pylium.core.component import Component
 
-class CorePackageImpl(Package):
+from typing import Type, ClassVar, Optional, List
+
+class PyliumPackageHeader(Package):
     """
-    Core package implementation
+    Pylium package header
     """
     authors: ClassVar[List[Package.AuthorInfo]] = [
         Package.AuthorInfo(name="Rouven Raudzus", email="raudzus@autiwire.org", since_version="0.0.1", since_date=Package.Date(2025, 5, 14))
@@ -11,15 +14,10 @@ class CorePackageImpl(Package):
         Package.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=Package.Date(2025, 5, 14)),
     ]
 
-logger = CorePackageImpl.logger
-
-class CoreImpl(Core):
+class Pylium(Component):
     """
-    Core implementation
+    Pylium component
     """
-
-    _is_impl = True
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.logger.debug(f"Initializing Core: {self.name}")
+        self.logger.debug(f"Initializing Pylium: {self.name}")
