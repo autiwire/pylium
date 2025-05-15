@@ -1,6 +1,9 @@
 # Component Implementation - Demo implementation
 
 from . import Component
+from pylium.core.package import Package
+
+from typing import ClassVar, List
 
 # Import the heavy machinery
 # 
@@ -13,8 +16,18 @@ from . import Component
 # By importing here instead of the Header class, we can check dependencies before they are needed
 # and fail early or install missing dependencies automatically.
 
-import logging
-logger = logging.getLogger(__name__)
+class ComponentPackageImpl(Package):
+    """
+    This Package contains the core functionality of the component.
+    """
+    authors: ClassVar[List[Package.AuthorInfo]] = [
+        Package.AuthorInfo(name="Rouven Raudzus", email="raudzus@autiwire.org", since_version="0.0.1", since_date=Package.Date(2025, 5, 15))
+    ]
+    changelog: ClassVar[List[Package.ChangelogEntry]] = [
+        Package.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=Package.Date(2025, 5, 15)),
+    ]
+
+logger = ComponentPackageImpl.logger
 
 # Create a Impl class that inherits from the Component class
 class ComponentImpl(Component):

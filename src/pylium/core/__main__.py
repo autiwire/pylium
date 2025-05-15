@@ -1,13 +1,8 @@
-from . import Core
-
-import fire
-import os
+from . import CorePackage
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
 if __name__ == "__main__":
-    # fix using cat instead of nano/vi for fire output
+    CorePackage.cli()
 
-    os.environ["PAGER"] = "cat"
-    fire.Fire(Core.pylium().cli())

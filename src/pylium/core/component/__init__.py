@@ -7,10 +7,7 @@ The Component class is the base class for all Pylium components.
 
 """
 
-from pylium.core.package import Package
-from ._h import Component
-
-from typing import ClassVar, List
+from ._h import Component, Package, ClassVar, List
 
 class ComponentPackage(Package):
     """

@@ -12,8 +12,8 @@ import typing
 import re 
 import datetime
 
-from logging import getLogger
-logger = getLogger(__name__)
+import logging
+logger = logging.getLogger(__name__)
 
 class _ModuleBase(ABC, metaclass=_ModuleMeta):
     """
@@ -86,9 +86,28 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
     )
 
     logger: ClassVar[logging.Logger] = Attribute(
-        processor=lambda cls: getLogger(cls.name),
+        processor=lambda cls: logging.getLogger(cls.name),
         requires=["name"]
     )
+
+    @classmethod
+    def shortname(cls) -> str:
+        """
+        Returns the basename of the module name without _h or _impl suffixes.
+        """
+
+        # Therefor remove ending _h or _impl from the name
+        ret = cls.name
+        if ret.endswith("._h"):
+            ret = ret[:-3]
+        elif ret.endswith("_h"):
+            ret = ret[:-2]
+        elif ret.endswith("._impl"):
+            ret = ret[:-6]
+        elif ret.endswith("_impl"):
+            ret = ret[:-5]
+
+        return ret
 
     def __init_subclass__(cls, **kwargs) -> None:
         logger.debug(f"Module __init_subclass__ for: {cls.__name__}")
@@ -96,7 +115,7 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
 
         ordered_attrs_to_resolve = [
             "name", "file", "description", "dependencies", 
-            "authors", "changelog", "version", "fqn", "type", "role"
+            "authors", "changelog", "version", "fqn", "type", "role", "logger"
         ]
 
         # Attributes whose processors (if defined on _ModuleBase) should always be re-evaluated for each subclass,
@@ -548,3 +567,42 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
         final_list = sorted(list(all_sys_deps))
         #logger.debug(f"get_system_dependencies for {cls.__name__} on {final_distro_name_str} {final_distro_version_str}: Found {len(final_list)} system dependencies: {final_list}")
         return final_list
+
+    @classmethod
+    def get_implementation_module_class(cls) -> Optional[typing.Type["_ModuleBase"]]:
+        """
+        Returns the implementation module for this module.
+        """
+
+        possible_impl_modules = [cls.shortname(), cls.shortname() + "_impl", cls.shortname() + "._impl"]
+
+        for module_name in possible_impl_modules:
+            logger.debug(f"get_implementation_module: Checking module {module_name}")
+            try:
+                mod = importlib.import_module(module_name)
+
+                # Check if module contains a class that is a subclass of "_ModuleBase"
+                tmp_mod_class = None
+                if hasattr(mod, "__dict__"):
+                    for name, obj in mod.__dict__.items():
+                        if isinstance(obj, type) and issubclass(obj, _ModuleBase) and obj.__module__ == module_name:
+                            if tmp_mod_class is None:
+                                tmp_mod_class = obj
+                            else:
+                                logger.warning(f"get_implementation_module: Found multiple implementation classes for {cls.__name__} in {module_name}: {tmp_mod_class.__name__} and {obj.__name__}. Using first one.")
+
+                if tmp_mod_class is not None:
+                    from pylium.core.component import Component
+                    # Check if there is a subclass of Component in the module "mod"
+                    for name, obj in mod.__dict__.items():
+                        if isinstance(obj, type) and issubclass(obj, Component):
+                            # Check if is_impl is True
+                            if hasattr(obj, "_is_impl") and obj._is_impl:
+                                return tmp_mod_class
+            except ImportError:
+                pass
+
+        logger.warning(f"Did not find implementation module class for {cls.__name__}")
+        return None
+        
+        

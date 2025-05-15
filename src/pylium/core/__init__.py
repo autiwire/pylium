@@ -1,16 +1,15 @@
+from .package import Package
 from .component import Component
 
 from typing import Type, ClassVar, Optional, List
-import datetime
 
-# Import the heavy machinery
-#
-# Here you would import the heavy machinery, but do it in the impl module instead
-# Here we only define the dependencies of the compontent for the install system to detect them automatically
-#
-
-
-
+class CorePackage(Package):
+    authors: ClassVar[List[Package.AuthorInfo]] = [
+        Package.AuthorInfo(name="Rouven Raudzus", email="raudzus@autiwire.org", since_version="0.0.1", since_date=Package.Date(2025, 5, 14))
+    ]
+    changelog: ClassVar[List[Package.ChangelogEntry]] = [
+        Package.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=Package.Date(2025, 5, 14)),
+    ]
 
 class Core(Component):
     """

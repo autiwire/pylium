@@ -2,8 +2,8 @@ import dataclasses
 from typing import Any, Callable, Optional, List
 import datetime
 from enum import Enum
-import logging
 
+import logging
 logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass(frozen=True)

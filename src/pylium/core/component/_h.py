@@ -109,14 +109,23 @@ class Component(ComponentBase, metaclass=ComponentMetaclass):
 
         logger.debug(f"  Found module: {my_module}")
 
-        # FIX: Generate correct relative name like 'pylium.core.component._impl'
-        # FIX: Generate correct relative name like 'pylium.core.component._impl'
-        impl_modules_names = [
-            f"{my_module}",               # Check module itself
-            f"{my_module}_impl",          # Check sibling_impl.py (e.g., core/component_impl.py)
-            f"{my_module}._impl"          # Check _impl.py inside package (e.g., component/_impl.py)
-        ]
+        if my_module is not None:
+            logger.debug(f"  Module: {my_module}")
+        else:
+            logger.warning(f"  Did not find ModuleClass for {cls.__name__}")
+            return None
 
+        my_impl_module_class = my_module.get_implementation_module_class()
+        logger.debug(f"  Found Implementation ModuleClass: {my_impl_module_class}")
+        if my_impl_module_class is None:
+            logger.warning(f"  Did not find Implementation ModuleClass for {cls.__name__}")
+            return None
+
+        # Now we got module/ModuleClass of the Implementation Module
+        # We need to find the class in the implementation module
+        # that is a subclass of the component class
+
+        impl_modules_names = [ my_impl_module_class.__module__ ]
         impl_cls = None
         for module_name in impl_modules_names:
             try:
