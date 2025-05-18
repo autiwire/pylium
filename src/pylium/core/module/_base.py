@@ -4,7 +4,7 @@ from ._attrs import _ModuleType, _ModuleRole, _ModuleAttribute, _ModuleDependenc
 from abc import ABC
 import sys
 import os
-from typing import ClassVar, List, Optional, Type, Any, Generator, Tuple
+from typing import ClassVar, List, Optional, Type, Any, Generator, Tuple, Callable
 import pkgutil
 import importlib
 import logging
@@ -26,6 +26,29 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
     Dependency = _ModuleDependency
     AuthorInfo = _ModuleAuthorInfo
     ChangelogEntry = _ChangelogEntry # Expose for type hinting / usage
+
+    @classmethod
+    def class_role(cls, role: Role) -> Callable[[Type], Type]:
+        """
+        Class decorator to explicitly set the role of a class (HEADER/IMPLEMENTATION).
+        This is used to mark classes as either header or implementation, which is a separate
+        concept from the Module/Package/Project type system.
+
+        Args:
+            role: The role to assign to the class (should be HEADER or IMPLEMENTATION)
+        
+        Returns:
+            A class decorator that sets the role
+        """
+        if role not in (cls.Role.HEADER, cls.Role.IMPLEMENTATION):
+            raise ValueError(f"class_role decorator only accepts HEADER or IMPLEMENTATION roles, got {role}")
+            
+        def decorator(cls_to_decorate: Type) -> Type:
+            # Store the role in a special class attribute
+            logger.debug(f"class_role decorator: Setting __pylium_class_role__ for {cls_to_decorate.__name__} to {role}")
+            setattr(cls_to_decorate, '__pylium_class_role__', role)
+            return cls_to_decorate
+        return decorator
 
     # Determine project root and path to pip2sysdep data
     # Assuming _base.py is at .../project_root/src/pylium/core/module/_base.py
@@ -77,9 +100,7 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
     )
     role: ClassVar[Role] = Attribute(
         processor=lambda cls: (
-            _ModuleBase.Role.HEADER if cls.file and cls.file.endswith("_h.py") else
-            _ModuleBase.Role.IMPLEMENTATION if cls.file and cls.file.endswith("_impl.py") else
-            _ModuleBase.Role.BUNDLE if cls.file and cls.file.endswith(".py") else
+            getattr(cls, '__pylium_class_role__') if hasattr(cls, '__pylium_class_role__') else
             _ModuleBase.Role.NONE
         ),
         requires=["file"]

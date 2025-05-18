@@ -1,10 +1,10 @@
-from abc import ABCMeta
+from ._header import _HeaderMeta
 
 from logging import getLogger
 logger = getLogger(__name__)
 
 # Define the metaclass
-class _ModuleMeta(ABCMeta):
+class _ModuleMeta(_HeaderMeta):
     def __str__(cls):
         # logger.debug(f"ModuleMeta __str__ for: {cls.__name__}")
 
@@ -12,13 +12,6 @@ class _ModuleMeta(ABCMeta):
         # It accesses class variables of cls.
         # Ensure these attributes are resolved before str(cls) is called outside of __init_subclass__.
         try:
-            # Accessing them might trigger their resolution if accessed for the first time here
-            # though __init_subclass__ should have handled it for defined subclasses.
-            name = getattr(cls, 'name', cls.__name__) # Fallback to cls.__name__ if 'name' isn't resolved
-            type_val = getattr(cls, 'type', 'unknown_type')
-            role_val = getattr(cls, 'role', 'unknown_role')
-            fqn_val = getattr(cls, 'fqn', 'unknown_fqn')
-            version_val = getattr(cls, 'version', 'unknown_version')
             return f"{cls.__name__} (PyliumModuleClass {cls.__name__}@{cls.name}^{cls.version} Type={cls.type} Role={cls.role} FQN={cls.fqn})"
         except AttributeError:
             # Fallback if attributes aren't set, which shouldn't happen for fully init'd subclasses

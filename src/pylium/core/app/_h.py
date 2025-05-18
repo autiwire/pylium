@@ -1,4 +1,5 @@
-from pylium.core.package import Package, Module
+from pylium.core.package import Package
+from pylium.core.module import Module
 from pylium.core.component import Component
 
 from typing import ClassVar, List, Optional, Type

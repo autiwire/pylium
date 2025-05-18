@@ -1,3 +1,5 @@
+from .core.header import Header
+
 from ._h import *
 
 try:
@@ -16,4 +18,4 @@ class PyliumPackage(Package):
         Package.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=Package.Date(2025, 5, 14)),
     ]
 
-__all__ = ["Pylium", "PyliumPackage"]
+__all__ = ["Pylium", "PyliumPackage", "Header"]
