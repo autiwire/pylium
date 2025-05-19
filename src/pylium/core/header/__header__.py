@@ -14,6 +14,7 @@ class Header(ABC, metaclass=HeaderMeta):
         description="Base class for all headers",
         status=Manifest.Status.Development,
         dependencies=[Manifest.Dependency(type=Manifest.Dependency.Type.PYLIUM, name="pylium", version="0.1.0")],
+        authors=__project__.authors,
         copyright=Manifest.Copyright(date=Manifest.Date(2025,1,1), author=__project__.authors.rraudzus),
         license=Manifest.License(name="", url=""),
         changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,1,1), author=__project__.authors.rraudzus, notes=["Initial release"])],
