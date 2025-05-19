@@ -4,8 +4,14 @@ from .core.header.manifest import Manifest
 # This is used to ensure that the manifest is always available and can be used to 
 # generate the manifest for the project
 
-Manifest.__manifest__ = Manifest(
-    location=Manifest.Location(name=Manifest.__qualname__, module=Manifest.__module__, file=Manifest.__file__),
-    description="Base class for all manifests",
-    authors=[Manifest.Author(name="Rouven Raudzus", email="raudzus@autiwire.org", company="AutiWire GmbH")],
+__manifest__ = Manifest(
+    location=Manifest.Location(name=__name__, module=__name__, file=__file__),
+    description="Project base manifest",
+    status=Manifest.Status.Development,
+    dependencies=[Manifest.Dependency(type=Manifest.Dependency.Type.PYLIUM, name="pylium", version="0.1.0")],
+    authors=Manifest._manifest_core_authors,
+    copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus),
+    license=Manifest.License(name="MIT", url="https://opensource.org/licenses/MIT"),
+    changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus, notes=["Initial release"])],
+
 )

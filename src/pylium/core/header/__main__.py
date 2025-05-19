@@ -1,6 +1,7 @@
-from . import Header
+from . import Header 
+from .manifest import Manifest
 
-
+print(Manifest.__manifest__)
 
 h = Header()
 

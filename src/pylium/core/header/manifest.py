@@ -4,6 +4,9 @@ from typing import ClassVar, List, Optional, Type, Any, Generator, Tuple, Callab
 from packaging.version import Version 
 import datetime
 from enum import Enum
+from importlib import import_module
+from pathlib import Path
+from os.path import join
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -70,43 +73,84 @@ class ManifestDependency(ManifestValue):
 
 
 class ManifestAuthor(ManifestValue):
-    def __init__(self, name: str, email: Optional[str] = None, company: Optional[str] = None, since_version: Optional[str] = None, since_date: Optional[ManifestValue.Date] = None):    
+    def __init__(self, tag: str, name: str, email: Optional[str] = None, company: Optional[str] = None, since_version: Optional[str] = None, since_date: Optional[ManifestValue.Date] = None):    
+        self.tag = tag
         self.name = name
         self.email = email
         self.company = company
         self.since_version = since_version
         self.since_date = since_date
 
+    def since(self, version: str, date: ManifestValue.Date) -> "ManifestAuthor":
+        # return a copy of the author with the since version and date
+        return ManifestAuthor(self.tag, self.name, self.email, self.company, version, date)
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestAuthor):
+            return False
+        return self.name == other.name or self.email == other.email
+    
+    def __ne__(self, other: Any) -> bool:
+        return not self.__eq__(other)
+    
+    def __hash__(self) -> int:
+        return hash((self.name, self.email))
+    
     def __str__(self):
         return f"{self.name} ({self.email}) {self.company} {self.since_version} {self.since_date}"
-    
+
     def __repr__(self):
         return f"{self.name} ({self.email}) {self.company} [since: {self.since_version} @ {self.since_date}]"
 
 
-class ManifestChangelog(ManifestValue):
-    def __init__(self, version: Optional[str] = None, notes: List[str] = [], date: Optional[ManifestValue.Date] = None):
-        self.version = version
-        self.notes = notes
-        self.date = date
+class ManifestAuthorList(ManifestValue):
+    def __init__(self, authors: List[ManifestAuthor]):
+        self._authors = authors
+
+    def __getattr__(self, tag: str) -> ManifestAuthor:        
+        for author in self._authors:
+            if author.tag == tag:
+                return author
+        raise AttributeError(f"Author {tag} not found")
+
+    def __getitem__(self, index: int) -> ManifestAuthor:
+        return self._authors[index]
+
+    def __len__(self) -> int:
+        return len(self._authors)
 
     def __str__(self):
-        return f"{self.version} ({self.date}) {self.notes}"
+        return f"{self._authors}"
     
     def __repr__(self):
-        return f"{self.version} ({self.date}) {self.notes}"
+        return f"{self._authors}"
+
+
+
+class ManifestChangelog(ManifestValue):
+    def __init__(self, version: Optional[str] = None, date: Optional[ManifestValue.Date] = None, author: Optional[ManifestAuthor] = None, notes: List[str] = []):
+        self.version = version
+        self.date = date
+        self.author = author
+        self.notes = notes
+
+    def __str__(self):
+        return f"{self.version} ({self.date}) {self.author} {self.notes}"
+    
+    def __repr__(self):
+        return f"{self.version} ({self.date}) {self.author} {self.notes}"
 
 
 class ManifestCopyright(ManifestValue):
-    def __init__(self, name: str, date: Optional[ManifestValue.Date] = None):
-        self.name = name
+    def __init__(self, date: Optional[ManifestValue.Date], author: Optional[ManifestAuthor] = None):
         self.date = date
+        self.author = author
 
     def __str__(self):
-        return f"{self.name} ({self.date})"
+        return f"(c) ({self.date}) {self.author}"
     
     def __repr__(self):
-        return f"{self.name} ({self.date})"
+        return f"(c) ({self.date}) {self.author}"
     
 
 class ManifestLicense(ManifestValue):
@@ -149,47 +193,34 @@ class Manifest:
     """
 
     # Manifests own manifest
+    # Usually here in header classes the manifest is defined
     __manifest__: ClassVar["Manifest"] = None
-    
-    # Get the default manifest.
-    @classmethod
-    def __default_manifest__(cls) -> "Manifest":
-        # the default manifest is the one defined in a project's __manifest__.py file
-        from importlib import import_module
-        from pathlib import Path
-        from os.path import join
-
-        # walk module path upwards until __manifest__.py is found
-        # don't leave package root
-        module_path = cls.__module__
-        while module_path:
-            manifest_path = join(module_path, "__manifest__.py")
-            if Path(manifest_path).exists():
-                break
-            module_path = module_path.rsplit(".", 1)[0]
-
-        if not module_path:
-            raise ValueError("No __manifest__.py file found")
-
-        module = import_module(module_path)
-        return module.__manifest__
-
+    _manifest_core_authors = ManifestAuthorList([
+                                        ManifestAuthor(tag="rraudzus", 
+                                            name="Rouven Raudzus", 
+                                            email="raudzus@autiwire.org", 
+                                            company="AutiWire GmbH", 
+                                            since_version="0.0.0", 
+                                            since_date=datetime.date(2025,5,10))
+                                            ])
 
     Date = ManifestValue.Date
     Location = ManifestLocation
     Author = ManifestAuthor
+    AuthorList = ManifestAuthorList
     Changelog = ManifestChangelog
     Dependency = ManifestDependency
     Copyright = ManifestCopyright
     License = ManifestLicense
     Status = ManifestStatus
     
+
     def __init__(self, 
                 location: Location,
                 description: str = "",
-                authors: Optional[List[Author]] = None, 
                 changelog: Optional[List[Changelog]] = None, 
                 dependencies: Optional[List[Dependency]] = None, 
+                authors: Optional[AuthorList] = None,
                 copyright: Optional[Copyright] = None,
                 license: Optional[License] = None,
                 status: Status = Status.Development,
@@ -198,12 +229,22 @@ class Manifest:
         
         self.location: Manifest.Location = location
         self.description: str = description
-        self.authors: List[Manifest.Author] = authors or []
         self.changelog: List[Manifest.Changelog] = changelog or []
         self.dependencies: List[Manifest.Dependency] = dependencies or []
-        self.copyright: Manifest.Copyright = copyright or Manifest.Copyright(name="", date=None)
+        self.authors: Manifest.AuthorList = authors or Manifest.AuthorList([])
+        self.copyright: Manifest.Copyright = copyright or Manifest.Copyright(date=None, author=None)
         self.license: Manifest.License = license or Manifest.License(name="", url=None)        
         self.status: Manifest.Status = status
+
+
+    @property
+    def contributors(self) -> AuthorList:
+        # We create a list of authors from the changelog
+        authors = []
+        for changelog in self.changelog:
+            if changelog.author and changelog.author not in authors:
+                authors.append(changelog.author)
+        return ManifestAuthorList(authors)
 
 
     @property
@@ -280,15 +321,19 @@ class Manifest:
     def __ge__(self, other: Any) -> bool:
         if isinstance(other, Manifest):
             return self.version >= other.version
-        
+
+
+
+
+# Define Manifests own manifest
 Manifest.__manifest__ = Manifest(
     location=Manifest.Location(name=Manifest.__qualname__, module=Manifest.__module__, file=__file__),
-    description="Base class for all manifests",
-    authors=[Manifest.Author(name="Rouven Raudzus", email="raudzus@autiwire.org", company="AutiWire GmbH")],
-    changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), notes=["Initial release"])],
+    description="Base class for all manifests",    
+    status=Manifest.Status.Development,
     dependencies=[Manifest.Dependency(type=Manifest.Dependency.Type.PYLIUM, name="pylium", version="0.1.0")],
-    copyright=Manifest.Copyright(name="AutiWire GmbH", date=Manifest.Date(2025,5,18)),
+    authors=Manifest._manifest_core_authors,
+    copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus),
     license=Manifest.License(name="", url=""),
-    status=Manifest.Status.Development
+    changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus, notes=["Initial release"])],
 )
 

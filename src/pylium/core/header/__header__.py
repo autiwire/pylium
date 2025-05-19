@@ -1,4 +1,5 @@
 from .manifest import Manifest
+from pylium.__manifest__ import __manifest__ as __project__
 
 from abc import ABC, ABCMeta
 
@@ -11,12 +12,11 @@ class Header(ABC, metaclass=HeaderMeta):
     __manifest__: Manifest = Manifest(
         location=Manifest.Location(name=__qualname__, module=__module__, file=__file__),
         description="Base class for all headers",
-        authors=[Manifest.Author(name="Rouven Raudzus", email="raudzus@autiwire.org", company="AutiWire GmbH")],
-        changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,1,1), notes=["Initial release"])],
+        status=Manifest.Status.Development,
         dependencies=[Manifest.Dependency(type=Manifest.Dependency.Type.PYLIUM, name="pylium", version="0.1.0")],
-        copyright=Manifest.Copyright(name="AutiWire GmbH", date=Manifest.Date(2025,1,1)),
+        copyright=Manifest.Copyright(date=Manifest.Date(2025,1,1), author=__project__.authors.rraudzus),
         license=Manifest.License(name="", url=""),
-        status=Manifest.Status.Development
+        changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,1,1), author=__project__.authors.rraudzus, notes=["Initial release"])],
     )
     
     def __init__(self, *args, **kwargs):
