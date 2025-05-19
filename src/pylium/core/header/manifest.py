@@ -148,8 +148,32 @@ class Manifest:
     - Optional: Location information (name, module, file, fqn)
     """
 
+    # Manifests own manifest
     __manifest__: ClassVar["Manifest"] = None
-    __defaults__: ClassVar["Manifest"] = None
+    
+    # Get the default manifest.
+    @classmethod
+    def __default_manifest__(cls) -> "Manifest":
+        # the default manifest is the one defined in a project's __manifest__.py file
+        from importlib import import_module
+        from pathlib import Path
+        from os.path import join
+
+        # walk module path upwards until __manifest__.py is found
+        # don't leave package root
+        module_path = cls.__module__
+        while module_path:
+            manifest_path = join(module_path, "__manifest__.py")
+            if Path(manifest_path).exists():
+                break
+            module_path = module_path.rsplit(".", 1)[0]
+
+        if not module_path:
+            raise ValueError("No __manifest__.py file found")
+
+        module = import_module(module_path)
+        return module.__manifest__
+
 
     Date = ManifestValue.Date
     Location = ManifestLocation
