@@ -15,9 +15,12 @@ class Header(ABC, metaclass=HeaderMeta):
         status=Manifest.Status.Development,
         dependencies=[Manifest.Dependency(type=Manifest.Dependency.Type.PYLIUM, name="pylium", version="0.1.0")],
         authors=__project__.authors,
+        maintainers=__project__.maintainers,
         copyright=__project__.copyright,
         license=__project__.license,
-        changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,1,1), author=__project__.authors.rraudzus, notes=["Initial release"])],
+        changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,1,1), author=__project__.authors.rraudzus, notes=["Initial release"]),
+                   Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,5,19), author=__project__.authors.rraudzus, notes=["Added maintainers pointing to authors of the project"]),
+                   Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,5,20), author=__project__.authors.rraudzus, notes=["Added license pointing to project license"])],                           
     )
     
     def __init__(self, *args, **kwargs):

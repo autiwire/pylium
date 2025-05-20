@@ -128,6 +128,11 @@ class ManifestAuthorList(ManifestValue):
         return iter(self._authors)
 
 
+# After ManifestAuthorList definition but before Manifest class
+# Type alias for maintainers list - semantically different but technically the same
+ManifestMaintainerList = ManifestAuthorList
+
+
 class ManifestChangelog(ManifestValue):
     def __init__(self, version: Optional[str] = None, date: Optional[ManifestValue.Date] = None, author: Optional[ManifestAuthor] = None, notes: List[str] = []):
         self.version = version
@@ -236,6 +241,7 @@ class Manifest:
     Location = ManifestLocation
     Author = ManifestAuthor
     AuthorList = ManifestAuthorList
+    MaintainerList = ManifestMaintainerList
     Changelog = ManifestChangelog
     Dependency = ManifestDependency
     Copyright = ManifestCopyright
@@ -251,6 +257,9 @@ class Manifest:
             since_version="0.0.0", 
             since_date=datetime.date(2025,5,10))
             ])    
+
+    # Core maintainers, initially same as authors
+    _manifest_core_maintainers = ManifestMaintainerList(_manifest_core_authors._authors.copy())
 
     # Default licenses to pick from
     licenses = ManifestLicenseList([
@@ -288,6 +297,7 @@ class Manifest:
                 changelog: Optional[List[Changelog]] = None, 
                 dependencies: Optional[List[Dependency]] = None, 
                 authors: Optional[AuthorList] = None,
+                maintainers: Optional[MaintainerList] = None,
                 copyright: Optional[Copyright] = None,
                 license: Optional[License] = None,
                 status: Status = Status.Development,
@@ -299,6 +309,8 @@ class Manifest:
         self.changelog: List[Manifest.Changelog] = changelog or []
         self.dependencies: List[Manifest.Dependency] = dependencies or []
         self.authors: Manifest.AuthorList = authors or Manifest.AuthorList([])
+        # Maintainers defaults to authors if not specified, but as a new list
+        self.maintainers: Manifest.MaintainerList = maintainers or Manifest.MaintainerList(self.authors._authors.copy() if authors else [])
         self.copyright: Manifest.Copyright = copyright or Manifest.Copyright(date=None, author=None)
         self.license: Manifest.License = license or Manifest.License(name="", url=None)        
         self.status: Manifest.Status = status
@@ -306,12 +318,25 @@ class Manifest:
 
     @property
     def contributors(self) -> AuthorList:
-        # We create a list of authors from the changelog
-        authors = []
+        # We create a list of contributors from authors, maintainers, and changelog entries
+        contributors = []
+        
+        # Add original authors first
+        for author in self.authors:
+            if author not in contributors:
+                contributors.append(author)
+        
+        # Add maintainers
+        for maintainer in self.maintainers:
+            if maintainer not in contributors:
+                contributors.append(maintainer)
+                
+        # Add changelog authors
         for changelog in self.changelog:
-            if changelog.author and changelog.author not in authors:
-                authors.append(changelog.author)
-        return ManifestAuthorList(authors)
+            if changelog.author and changelog.author not in contributors:
+                contributors.append(changelog.author)
+                
+        return ManifestAuthorList(contributors)
 
 
     @property
@@ -329,8 +354,8 @@ class Manifest:
 
     @property
     def maintainer(self) -> str:
-        if self.authors:
-            return self.authors[0].name
+        if self.maintainers:
+            return self.maintainers[0].name
         return ""
 
     @property
@@ -342,6 +367,18 @@ class Manifest:
     @property
     def credits(self) -> List[str]:
         return [author.name for author in self.authors]
+
+    @property
+    def created(self) -> Date:
+        if self.changelog:
+            return self.changelog[0].date
+        return None
+
+    @property
+    def updated(self) -> Date:
+        if self.changelog:
+            return self.changelog[-1].date
+        return None
 
     def __str__(self):
         base = f"Manifest (version={self.version}, author={self.author}, status={self.status}, dependencies={len(self.dependencies)})"
@@ -397,8 +434,11 @@ Manifest.__manifest__ = Manifest(
     status=Manifest.Status.Development,
     dependencies=[Manifest.Dependency(type=Manifest.Dependency.Type.PYLIUM, name="pylium", version="0.1.0")],
     authors=Manifest._manifest_core_authors,
+    maintainers=Manifest._manifest_core_maintainers,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus),
     license=Manifest.licenses.NoLicense,
-    changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus, notes=["Initial release"])],
+    changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus, notes=["Initial release"]),
+               Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,5,19), author=Manifest._manifest_core_authors.rraudzus, notes=["Added maintainers"]),
+               Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,5,20), author=Manifest._manifest_core_authors.rraudzus, notes=["Added license"])],                           
 )
 
