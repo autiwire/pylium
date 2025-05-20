@@ -11,7 +11,7 @@ __manifest__ = Manifest(
     dependencies=[Manifest.Dependency(type=Manifest.Dependency.Type.PYLIUM, name="pylium", version="0.1.0")],
     authors=Manifest._manifest_core_authors,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus),
-    license=Manifest.License(name="MIT", url="https://opensource.org/licenses/MIT"),
+    license=Manifest.licenses.NoLicense,
     changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus, notes=["Initial release"])],
 
 )

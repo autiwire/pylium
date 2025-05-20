@@ -48,7 +48,6 @@ class ManifestLocation(ManifestValue):
 class ManifestDependencyType(Enum):
     PYLIUM = "pylium"
     PIP = "pip"
-    APT = "apt"
 
     def __str__(self):
         return self.value
@@ -88,13 +87,13 @@ class ManifestAuthor(ManifestValue):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, ManifestAuthor):
             return False
-        return self.name == other.name or self.email == other.email
+        return self.tag == other.tag
     
     def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
     
     def __hash__(self) -> int:
-        return hash((self.name, self.email))
+        return hash((self.tag))
     
     def __str__(self):
         return f"{self.name} ({self.email}) {self.company} {self.since_version} {self.since_date}"
@@ -124,7 +123,9 @@ class ManifestAuthorList(ManifestValue):
     
     def __repr__(self):
         return f"{self._authors}"
-
+    
+    def __iter__(self) -> Generator[ManifestAuthor, None, None]:
+        return iter(self._authors)
 
 
 class ManifestChangelog(ManifestValue):
@@ -154,16 +155,51 @@ class ManifestCopyright(ManifestValue):
     
 
 class ManifestLicense(ManifestValue):
-    def __init__(self, name: str, url: Optional[str] = None):
+    def __init__(self, spdx: str, name: str, url: Optional[str] = None):
+        self.spdx = spdx
         self.name = name
         self.url = url
-        
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestLicense):
+            return False
+        return self.spdx == other.spdx
+    
+    def __ne__(self, other: Any) -> bool:
+        return not self.__eq__(other)
+
     def __str__(self):
-        return f"{self.name} ({self.url})"
+        return f"{self.spdx} ({self.name}) {self.url}"
     
     def __repr__(self):
-        return f"{self.name} ({self.url})"
+        return f"{self.spdx} ({self.name}) {self.url}"
     
+
+class ManifestLicenseList(ManifestValue):
+    def __init__(self, licenses: List[ManifestLicense]):
+        self._licenses = licenses
+
+    def __getattr__(self, spdx: str) -> ManifestLicense:        
+        for license in self._licenses:
+            if license.spdx == spdx:
+                return license
+        raise AttributeError(f"License {spdx} not found")
+
+    def __str__(self):
+        return f"{self._licenses}"
+    
+    def __repr__(self):
+        return f"{self._licenses}"
+    
+    def __getitem__(self, index: int) -> ManifestLicense:
+        return self._licenses[index]
+    
+    def __len__(self) -> int:
+        return len(self._licenses)
+    
+    def __iter__(self) -> Generator[ManifestLicense, None, None]:
+        return iter(self._licenses)
+        
 
 class ManifestStatus(Enum):
     Development = "Development"
@@ -195,14 +231,6 @@ class Manifest:
     # Manifests own manifest
     # Usually here in header classes the manifest is defined
     __manifest__: ClassVar["Manifest"] = None
-    _manifest_core_authors = ManifestAuthorList([
-                                        ManifestAuthor(tag="rraudzus", 
-                                            name="Rouven Raudzus", 
-                                            email="raudzus@autiwire.org", 
-                                            company="AutiWire GmbH", 
-                                            since_version="0.0.0", 
-                                            since_date=datetime.date(2025,5,10))
-                                            ])
 
     Date = ManifestValue.Date
     Location = ManifestLocation
@@ -213,7 +241,46 @@ class Manifest:
     Copyright = ManifestCopyright
     License = ManifestLicense
     Status = ManifestStatus
-    
+
+    # Core authors for use in own manifest
+    _manifest_core_authors = ManifestAuthorList([
+        ManifestAuthor(tag="rraudzus", 
+            name="Rouven Raudzus", 
+            email="raudzus@autiwire.org", 
+            company="AutiWire GmbH", 
+            since_version="0.0.0", 
+            since_date=datetime.date(2025,5,10))
+            ])    
+
+    # Default licenses to pick from
+    licenses = ManifestLicenseList([
+        ManifestLicense("NoLicense", "No license", None),
+        ManifestLicense("MIT", "MIT License", "https://opensource.org/licenses/MIT"),
+        ManifestLicense("Apache-2.0", "Apache License 2.0", "https://opensource.org/licenses/Apache-2.0"),
+        ManifestLicense("GPL-2.0", "GNU General Public License v2.0", "https://opensource.org/licenses/GPL-2.0"),
+        ManifestLicense("GPL-3.0", "GNU General Public License v3.0", "https://opensource.org/licenses/GPL-3.0"),
+        ManifestLicense("LGPL-2.0", "GNU Lesser General Public License v2.0", "https://opensource.org/licenses/LGPL-2.0"),
+        ManifestLicense("LGPL-2.1", "GNU Lesser General Public License v2.1", "https://opensource.org/licenses/LGPL-2.1"),
+        ManifestLicense("LGPL-3.0", "GNU Lesser General Public License v3.0", "https://opensource.org/licenses/LGPL-3.0"),
+        ManifestLicense("BSD-2-Clause", "BSD 2-Clause \"Simplified\" License", "https://opensource.org/licenses/BSD-2-Clause"),
+        ManifestLicense("BSD-3-Clause", "BSD 3-Clause \"New\" or \"Revised\" License", "https://opensource.org/licenses/BSD-3-Clause"),
+        ManifestLicense("BSD-4-Clause", "BSD 4-Clause \"Original\" or \"Old\" License", "https://opensource.org/licenses/BSD-4-Clause"),
+        ManifestLicense("Zlib", "Zlib License", "https://opensource.org/licenses/Zlib"),
+        ManifestLicense("BSL-1.0", "Boost Software License 1.0", "https://opensource.org/licenses/BSL-1.0"),
+        ManifestLicense("Artistic-2.0", "Artistic License 2.0", "https://opensource.org/licenses/Artistic-2.0"),
+        ManifestLicense("MPL-1.1", "Mozilla Public License 1.1", "https://opensource.org/licenses/MPL-1.1"),
+        ManifestLicense("MPL-2.0", "Mozilla Public License 2.0", "https://opensource.org/licenses/MPL-2.0"),
+        ManifestLicense("EPL-1.0", "Eclipse Public License 1.0", "https://opensource.org/licenses/EPL-1.0"),
+        ManifestLicense("EPL-2.0", "Eclipse Public License 2.0", "https://opensource.org/licenses/EPL-2.0"),
+        ManifestLicense("AGPL-3.0", "GNU Affero General Public License v3.0", "https://opensource.org/licenses/AGPL-3.0"),
+        ManifestLicense("CDDL-1.0", "Common Development and Distribution License 1.0", "https://opensource.org/licenses/CDDL-1.0"),
+        ManifestLicense("CC0-1.0", "Creative Commons Zero v1.0 Universal", "https://creativecommons.org/publicdomain/zero/1.0/"),
+        ManifestLicense("CC-BY-4.0", "Creative Commons Attribution 4.0", "https://creativecommons.org/licenses/by/4.0/"),
+        ManifestLicense("Python-2.0", "Python Software Foundation License 2.0", "https://opensource.org/licenses/Python-2.0"),
+        ManifestLicense("OFL-1.1", "SIL Open Font License 1.1", "https://opensource.org/licenses/OFL-1.1"),
+        ManifestLicense("Unlicense", "The Unlicense", "https://unlicense.org/"),
+    ])
+
 
     def __init__(self, 
                 location: Location,
@@ -323,8 +390,6 @@ class Manifest:
             return self.version >= other.version
 
 
-
-
 # Define Manifests own manifest
 Manifest.__manifest__ = Manifest(
     location=Manifest.Location(name=Manifest.__qualname__, module=Manifest.__module__, file=__file__),
@@ -333,7 +398,7 @@ Manifest.__manifest__ = Manifest(
     dependencies=[Manifest.Dependency(type=Manifest.Dependency.Type.PYLIUM, name="pylium", version="0.1.0")],
     authors=Manifest._manifest_core_authors,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus),
-    license=Manifest.License(name="", url=""),
+    license=Manifest.licenses.NoLicense,
     changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus, notes=["Initial release"])],
 )
 
