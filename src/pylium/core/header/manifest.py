@@ -432,7 +432,7 @@ Manifest.__manifest__ = Manifest(
     location=Manifest.Location(name=Manifest.__qualname__, module=Manifest.__module__, file=__file__),
     description="Base class for all manifests",    
     status=Manifest.Status.Development,
-    dependencies=[Manifest.Dependency(type=Manifest.Dependency.Type.PYLIUM, name="pylium", version="0.1.0")],
+    dependencies=[],
     authors=Manifest._manifest_core_authors,
     maintainers=Manifest._manifest_core_maintainers,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus),
