@@ -1,5 +1,5 @@
 from . import Header 
-from .manifest import Manifest
+from pylium.core.manifest import Manifest
 from pylium import __project__
 
 print(__project__.__manifest__)

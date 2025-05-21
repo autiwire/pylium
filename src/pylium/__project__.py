@@ -1,4 +1,4 @@
-from .core.header.manifest import Manifest, _manifest_core_authors, _manifest_core_maintainers
+from .core.manifest import Manifest, _manifest_core_authors, _manifest_core_maintainers
 
 # In __manifest__.py in project source root default values for the manifest are defined.
 # This is used to ensure that the manifest is always available and can be used to 
@@ -26,3 +26,5 @@ __manifest__ = Manifest(
                                     notes=["Renamed file to __project__.py"])
                 ],
 )
+
+__all__ = ["__manifest__", "Manifest"]

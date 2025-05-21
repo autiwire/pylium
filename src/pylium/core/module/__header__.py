@@ -20,3 +20,33 @@ class Module(_ModuleBase):
     dependencies: ClassVar[List[_ModuleBase.Dependency]] = [
         _ModuleBase.Dependency(name="pydantic", type=_ModuleBase.Dependency.Type.PIP, version="2.10.2"),
     ]
+
+from pylium import __project__
+from pylium.core.header import Header
+
+class Module2(Header):
+    """
+    A module represented by a set of python files.
+
+    - project/package/module.py - Bundle + Public Interface
+    - project/package/module_h.py - Header (optional)
+    - project/package/module_impl.py - Implementation (optional)
+
+    """
+    
+    __manifest__ = Header.Manifest(
+        location=Header.Manifest.Location(module=__name__, classname=__qualname__),
+        description="Module2",
+        status=Header.Manifest.Status.Development,
+        dependencies=[],
+        authors=__project__.__manifest__.authors,
+        maintainers=__project__.__manifest__.maintainers,
+        copyright=__project__.__manifest__.copyright,
+        license=__project__.__manifest__.license,
+        changelog=[],
+    )
+    
+    type: ClassVar[_ModuleBase.Type] = _ModuleBase.Type.MODULE
+
+
+
