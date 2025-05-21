@@ -10,6 +10,9 @@ h = Header()
 print(h.__manifest__)
 
 class X(Header):
+    """
+    This is a test class.
+    """
     __manifest__ = Manifest(
         location=Manifest.Location(module=__module__, classname=__qualname__),
         description="Test class",
@@ -23,3 +26,5 @@ class X(Header):
     )
 
 print(X.__manifest__)
+
+print(X.__manifest__.doc)

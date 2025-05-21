@@ -2,15 +2,17 @@ from abc import ABC, abstractmethod, ABCMeta
 
 from typing import ClassVar, List, Optional, Type, Any, Generator, Tuple, Callable, Union
 from packaging.version import Version 
+
 import datetime
+import inspect
 from enum import Enum
-from importlib import import_module
 import importlib.machinery
 import importlib.util
 from pathlib import Path
 from os.path import join
 import sys
 from types import ModuleType
+import inspect
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -397,6 +399,22 @@ class Manifest:
             return self.changelog[-1].date
         return None
 
+    @property
+    def doc(self) -> str:
+        if self.location.classname:
+            # get the docstring from the class "classname" in module "module"
+            # therefor import the module and get the class. check that its in the class itself and not in a parent class
+            module = importlib.import_module(self.location.module)
+            cls = getattr(module, self.location.classname)
+            if cls.__doc__:
+                return cls.__doc__.strip()
+            else:
+                return ""
+        else:
+            # get the docstring from the module
+            module = importlib.import_module(self.location.module)
+            return inspect.getdoc(module).strip()
+
     def __str__(self):
         base = f"Manifest (version={self.version}, author={self.author}, status={self.status}, dependencies={len(self.dependencies)})"
         return f"{base} @ {self.location}"
@@ -517,6 +535,8 @@ Manifest.__manifest__ = Manifest(
                             notes=["Modified location information, requires less parameters"]),
         Manifest.Changelog(version="0.1.4", date=datetime.date(2025,5,22), author=_manifest_core_authors.rraudzus, 
                             notes=["Moved _manifest_core_* from class to module for more compactness"]),
+        Manifest.Changelog(version="0.1.5", date=datetime.date(2025,5,23), author=_manifest_core_authors.rraudzus, 
+                            notes=["Added doc property to get the docstring of the class or module"]),
     ]
 )
 
