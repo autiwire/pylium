@@ -5,8 +5,12 @@ from packaging.version import Version
 import datetime
 from enum import Enum
 from importlib import import_module
+import importlib.machinery
+import importlib.util
 from pathlib import Path
 from os.path import join
+import sys
+from types import ModuleType
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -32,11 +36,26 @@ class ManifestValue(object):
 
 
 class ManifestLocation(ManifestValue):
-    def __init__(self, name: str, module: str, file: str):
-        self.name = name
+    def __init__(self, module: str, classname: Optional[str] = None):
+        """
+        Create a manifest location.
+        
+        Args:
+            module: The module name:
+                   - For modules: use __name__
+                   - For classes: use __module__
+            classname: Optional class name (typically __qualname__ for classes)
+        """
         self.module = module
-        self.file = file
-        self.fqn = f"{self.module}.{self.name}"
+        self.classname = classname
+        
+        # Get the file location from the module name
+        spec = importlib.util.find_spec(self.module)
+        if spec is None or spec.origin is None:
+            raise ImportError(f"Could not find module {self.module}")
+            
+        self.file = str(Path(spec.origin).resolve())
+        self.fqn = f"{self.module}.{self.classname}" if self.classname else self.module
 
     def __str__(self):
         return f"{self.fqn}"
@@ -131,6 +150,7 @@ class ManifestAuthorList(ManifestValue):
 # After ManifestAuthorList definition but before Manifest class
 # Type alias for maintainers list - semantically different but technically the same
 ManifestMaintainerList = ManifestAuthorList
+ManifestContributorsList = ManifestAuthorList
 
 
 class ManifestChangelog(ManifestValue):
@@ -231,6 +251,15 @@ class Manifest:
     - Dependencies
     - License and copyright information
     - Optional: Location information (name, module, file, fqn)
+    
+    Manifests can be hierarchical:
+    - Project manifest: Root manifest in __init__.py
+    - Module manifest: One per module, inherits from project
+    - Class manifest: Optional, for classes needing specific metadata
+    
+    Child manifests can be created using:
+    manifest.createChild(location="new location") or
+    Manifest.from_parent(parent_manifest, location="new location")
     """
 
     # Manifests own manifest
@@ -242,24 +271,12 @@ class Manifest:
     Author = ManifestAuthor
     AuthorList = ManifestAuthorList
     MaintainerList = ManifestMaintainerList
+    ContributorsList = ManifestContributorsList
     Changelog = ManifestChangelog
     Dependency = ManifestDependency
     Copyright = ManifestCopyright
     License = ManifestLicense
     Status = ManifestStatus
-
-    # Core authors for use in own manifest
-    _manifest_core_authors = ManifestAuthorList([
-        ManifestAuthor(tag="rraudzus", 
-            name="Rouven Raudzus", 
-            email="raudzus@autiwire.org", 
-            company="AutiWire GmbH", 
-            since_version="0.0.0", 
-            since_date=datetime.date(2025,5,10))
-            ])    
-
-    # Core maintainers, initially same as authors
-    _manifest_core_maintainers = ManifestMaintainerList(_manifest_core_authors._authors.copy())
 
     # Default licenses to pick from
     licenses = ManifestLicenseList([
@@ -317,7 +334,7 @@ class Manifest:
 
 
     @property
-    def contributors(self) -> AuthorList:
+    def contributors(self) -> ContributorsList:
         # We create a list of contributors from authors, maintainers, and changelog entries
         contributors = []
         
@@ -336,7 +353,7 @@ class Manifest:
             if changelog.author and changelog.author not in contributors:
                 contributors.append(changelog.author)
                 
-        return ManifestAuthorList(contributors)
+        return Manifest.ContributorsList(contributors)
 
 
     @property
@@ -390,7 +407,7 @@ class Manifest:
 
     def __hash__(self):
         return hash((self.version, self.author, self.status, 
-                    self.location.name, self.location.module, 
+                    self.location.classname, self.location.module, 
                     self.location.file, self.location.fqn))
 
     def __eq__(self, other: Any) -> bool:
@@ -399,7 +416,7 @@ class Manifest:
         return (self.version == other.version and 
                 self.author == other.author and 
                 self.status == other.status and
-                self.location.name == other.location.name and
+                self.location.classname == other.location.classname and
                 self.location.module == other.location.module and
                 self.location.file == other.location.file and
                 self.location.fqn == other.location.fqn)
@@ -426,19 +443,80 @@ class Manifest:
         if isinstance(other, Manifest):
             return self.version >= other.version
 
+    def createChild(self, 
+                   location: Location,
+                   description: Optional[str] = None,
+                   changelog: Optional[List[Changelog]] = None,
+                   dependencies: Optional[List[Dependency]] = None,
+                   authors: Optional[AuthorList] = None,
+                   maintainers: Optional[MaintainerList] = None,
+                   copyright: Optional[Copyright] = None,
+                   license: Optional[License] = None,
+                   status: Optional[Status] = None) -> "Manifest":
+        """
+        Create a child manifest inheriting from this manifest.
+        Only specified fields will override the parent's values.
+        
+        Dependencies are NOT inherited from parent as they follow module hierarchy
+        rather than manifest hierarchy. Each module should explicitly declare its
+        own dependencies based on what it actually uses.
+        
+        Example:
+            project_manifest.createChild(
+                location=Location(...),
+                description="Module-specific description",
+                dependencies=[Dependency(...)]  # Module's own dependencies
+            )
+        """
+        return self.__class__(
+            location=location,
+            description=description or self.description,
+            changelog=changelog or self.changelog.copy(),
+            dependencies=dependencies or [],  # Don't inherit dependencies
+            authors=authors or ManifestAuthorList(self.authors._authors.copy()),
+            maintainers=maintainers or ManifestMaintainerList(self.maintainers._authors.copy()),
+            copyright=copyright or self.copyright,
+            license=license or self.license,
+            status=status or self.status
+        )
+
+
+# Core authors for use in own manifest
+_manifest_core_authors = ManifestAuthorList([
+    ManifestAuthor(tag="rraudzus", 
+        name="Rouven Raudzus", 
+        email="raudzus@autiwire.org", 
+        company="AutiWire GmbH", 
+        since_version="0.0.0", 
+        since_date=datetime.date(2025,5,10))
+        ])    
+
+
+# Core maintainers, initially same as authors
+_manifest_core_maintainers = ManifestMaintainerList(_manifest_core_authors._authors.copy())
+
 
 # Define Manifests own manifest
 Manifest.__manifest__ = Manifest(
-    location=Manifest.Location(name=Manifest.__qualname__, module=Manifest.__module__, file=__file__),
+    location=Manifest.Location(module=__name__, classname=Manifest.__qualname__),
     description="Base class for all manifests",    
     status=Manifest.Status.Development,
     dependencies=[],
-    authors=Manifest._manifest_core_authors,
-    maintainers=Manifest._manifest_core_maintainers,
-    copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus),
+    authors=_manifest_core_authors,
+    maintainers=_manifest_core_maintainers,
+    copyright=Manifest.Copyright(date=datetime.date(2025,5,18), author=_manifest_core_authors.rraudzus),
     license=Manifest.licenses.NoLicense,
-    changelog=[Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=Manifest._manifest_core_authors.rraudzus, notes=["Initial release"]),
-               Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,5,19), author=Manifest._manifest_core_authors.rraudzus, notes=["Added maintainers"]),
-               Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,5,20), author=Manifest._manifest_core_authors.rraudzus, notes=["Added license"])],                           
+    changelog=[
+        Manifest.Changelog(version="0.1.0", date=datetime.date(2025,5,18), author=_manifest_core_authors.rraudzus, 
+                            notes=["Initial release"]),
+        Manifest.Changelog(version="0.1.1", date=datetime.date(2025,5,19), author=_manifest_core_authors.rraudzus, 
+                            notes=["Added maintainers"]),
+        Manifest.Changelog(version="0.1.2", date=datetime.date(2025,5,20), author=_manifest_core_authors.rraudzus, 
+                            notes=["Added license"]),
+        Manifest.Changelog(version="0.1.3", date=datetime.date(2025,5,21), author=_manifest_core_authors.rraudzus, 
+                            notes=["Modified location information, requires less parameters"]),
+        Manifest.Changelog(version="0.1.4", date=datetime.date(2025,5,22), author=_manifest_core_authors.rraudzus, 
+                            notes=["Moved _manifest_core_* from class to module for more compactness"]),
+    ]
 )
 

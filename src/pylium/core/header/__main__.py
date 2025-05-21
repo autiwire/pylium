@@ -2,6 +2,7 @@ from . import Header
 from .manifest import Manifest
 from pylium import __project__
 
+print(__project__.__manifest__)
 print(Manifest.__manifest__)
 
 h = Header()
@@ -10,7 +11,7 @@ print(h.__manifest__)
 
 class X(Header):
     __manifest__ = Manifest(
-        location=Manifest.Location(name=__qualname__, module=__module__, file=__file__),
+        location=Manifest.Location(module=__module__, classname=__qualname__),
         description="Test class",
         status=Manifest.Status.Development,
         dependencies=[],
