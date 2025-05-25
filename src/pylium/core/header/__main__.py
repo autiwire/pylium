@@ -2,6 +2,11 @@ from . import Header
 from pylium.core.manifest import Manifest
 from pylium import __project__
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+
 print(__project__.__manifest__)
 print(Manifest.__manifest__)
 
