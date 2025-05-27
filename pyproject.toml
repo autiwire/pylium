@@ -31,3 +31,11 @@ packages = ["pylium", "pylium.core"]
 write_to = "src/pylium/_version.py"
 version_scheme = "post-release"
 local_scheme = "node-and-date" 
+
+[tool.pytest.ini_options]
+norecursedirs = ".venv .git build dist external *.egg-info src .old" 
+# Add any other top-level dirs you want to skip.
+# 'src' is often skipped in norecursedirs if 'testpaths' is set to 'tests', 
+# or if tests are only in the 'tests' directory.
+# If your tests directory itself is named 'src', then you wouldn't put 'src' here.
+testpaths = "tests" # This tells pytest to primarily look in the 'tests' directory

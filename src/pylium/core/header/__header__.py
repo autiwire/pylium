@@ -93,28 +93,40 @@ class Header(ABC, metaclass=HeaderMeta):
     # by finding a direct child with __class_type__ = HeaderClassType.Impl
     __implementation__: Optional[str] = None
 
-    def _find_impl(cls) -> Type["Header"]:
+    @classmethod
+    def _find_impl(cls_header) -> Optional[Type["Header"]]:
         """
-        Find the implementation class for this header.
+        Find the implementation class for this specific header class (cls_header).
+        Delegates the actual search logic to HeaderImpl._find_impl.
         """
-
-        from .__impl__ import HeaderImpl
-        return HeaderImpl._find_impl()
+        from .__impl__ import HeaderImpl 
+        return HeaderImpl._find_impl(specific_header_cls=cls_header)
 
    
     def __init__(self, *args, **kwargs):
         logger.debug(f"Component __init__: {self.__class__.__name__} called with args: {args}, kwargs: {kwargs}")
-        try:
-            logger.debug(f"  self.__class__ is not object, calling super().__init__(*args, **kwargs)")
-            super().__init__(*args, **kwargs)
-        except TypeError as e:
-            logger.warning(f"Potential issue during super().__init__ in {self.__class__.__name__}: {e}. Args: {args}, Kwargs: {kwargs}")
+        # Since Header is a direct subclass of ABC, and ABC.__init__ (which is object.__init__)
+        # does not accept arbitrary *args, **kwargs, we call super().__init__() without them
+        # to prevent the TypeError. Subclasses of Header are responsible for handling
+        # their own arguments and calling their super().__init__ appropriately.
+        super().__init__() # Changed from super().__init__(*args, **kwargs)
 
 
     def __new__(cls, *args, **kwargs):
         logger.debug(f"Component __new__: {cls.__name__} called with args: {args}, kwargs: {kwargs}")
    
-        return super().__new__(cls._find_impl(), *args, **kwargs)
+        actual_class_to_instantiate = cls._find_impl()
+
+        if not actual_class_to_instantiate:
+            raise RuntimeError(
+                f"Could not find or resolve an implementation for Header class {cls.__name__}. "
+                f"Ensure an Impl class is defined by convention, or __implementation__ is set correctly, "
+                f"or the class is a Bundle/Impl type."
+            )
+
+        logger.debug(f"  Actual class to instantiate determined by __new__ for {cls.__name__} is: {actual_class_to_instantiate.__name__}")
+        instance = super().__new__(actual_class_to_instantiate)
+        return instance
 
 
     def __init_subclass__(cls, **kwargs):
