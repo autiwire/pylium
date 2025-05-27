@@ -6,7 +6,7 @@ It is used to create a CLI interface for the application as well as serving
 fastapi endpoints and celery tasks.
 """
 
-from ._h import *
+from .__header__ import *
 
 class AppPackage(Package):
     """

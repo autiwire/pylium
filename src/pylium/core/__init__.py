@@ -1,12 +1,17 @@
+from pylium import __project__
+from pylium.manifest import Manifest
 
-from ._h import *
-
-class CorePackage(Package):
-    authors: ClassVar[List[Package.AuthorInfo]] = [
-        Package.AuthorInfo(name="Rouven Raudzus", email="raudzus@autiwire.org", since_version="0.0.1", since_date=Package.Date(2025, 5, 14))
+__manifest__ = __project__.createChild(
+    location=Manifest.Location(module=__name__, classname=None), 
+    description="The core functionalities of the Pylium library.",
+    status=Manifest.Status.Development,
+    changelog=[
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 28), 
+                           author=__project__.authors.rraudzus,
+                           notes=["Initial definition of pylium.core package manifest."])
     ]
-    changelog: ClassVar[List[Package.ChangelogEntry]] = [
-        Package.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=Package.Date(2025, 5, 14)),
-    ]
+)
 
-__all__ = ["Core", "CorePackage"]
+print(f"__manifest__: {__manifest__.__dict__}")
+
+__all__ = ["__manifest__"]
