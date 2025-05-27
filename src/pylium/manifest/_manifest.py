@@ -172,11 +172,11 @@ ManifestContributorsList = ManifestAuthorList
 
 
 class ManifestChangelog(ManifestValue):
-    def __init__(self, version: Optional[str] = None, date: Optional[ManifestValue.Date] = None, author: Optional[ManifestAuthor] = None, notes: List[str] = []):
+    def __init__(self, version: Optional[str] = None, date: Optional[ManifestValue.Date] = None, author: Optional[ManifestAuthor] = None, notes: Optional[List[str]] = None):
         self.version = version
         self.date = date
         self.author = author
-        self.notes = notes
+        self.notes = notes if notes is not None else []
 
     def __str__(self):
         return f"{self.version} ({self.date}) {self.author} {self.notes}"
