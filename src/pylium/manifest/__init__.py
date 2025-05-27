@@ -21,6 +21,7 @@ __manifest__ = Manifest(
     location=Manifest.Location(module=__name__, classname=Manifest.__qualname__),
     description="Base class for all manifests",    
     status=Manifest.Status.Development,
+    ai_access_level=Manifest.AIAccessLevel.Read,
     dependencies=[],
     authors=_manifest_core_authors,
     maintainers=_manifest_core_maintainers,
@@ -43,6 +44,10 @@ __manifest__ = Manifest(
                             notes=["Added per-module-manifest"]),
         Manifest.Changelog(version="0.1.7", date=Manifest.Date(2025,5,28), author=_manifest_core_authors.rraudzus, 
                             notes=["Moved pylium.core.manifest to pylium.manifest"]),
+        Manifest.Changelog(version="0.1.8", date=Manifest.Date(2025,5,28), author=_manifest_core_authors.rraudzus, 
+                            notes=["Added ai_access_level to manifest"]),
+        Manifest.Changelog(version="0.1.9", date=Manifest.Date(2025,5,28), author=_manifest_core_authors.rraudzus, 
+                            notes=["Set manifest ai_access_level to read"]),
     ]
 )
 

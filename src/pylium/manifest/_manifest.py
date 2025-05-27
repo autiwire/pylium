@@ -5,7 +5,7 @@ from packaging.version import Version
 
 import datetime
 import inspect
-from enum import Enum
+from enum import Enum, auto, Flag
 import importlib.machinery
 import importlib.util
 from pathlib import Path
@@ -138,7 +138,7 @@ class ManifestAuthor(ManifestValue):
     def __repr__(self):
         return f"{self.name} ({self.email}) {self.company} [since: {self.since_version} @ {self.since_date}]"
 
-
+    
 class ManifestAuthorList(ManifestValue):
     def __init__(self, authors: List[ManifestAuthor]):
         self._authors = authors
@@ -257,6 +257,19 @@ class ManifestStatus(Enum):
         return self.value
 
 
+# Note: This is a bitmask, so the order of the flags is important
+# This is a hint for the AI to use the correct access level,
+# mainly used for coding assistance, not for security
+# It might work, but AI might completely ignore it
+class ManifestAIAccessLevel(Flag):
+    NoAccess = 1 << 0
+    Read = 1 << 1
+    SuggestOnly = 1 << 2
+    ForkAllowed = 1 << 3
+    Write = 1 << 4
+    All = NoAccess | Read | SuggestOnly | ForkAllowed | Write
+
+
 class Manifest:
     """
     Metadata about a code unit (module, class, etc.).
@@ -295,6 +308,7 @@ class Manifest:
     Copyright = ManifestCopyright
     License = ManifestLicense
     Status = ManifestStatus
+    AIAccessLevel = ManifestAIAccessLevel
 
     # Default licenses to pick from
     licenses = ManifestLicenseList([
@@ -318,6 +332,7 @@ class Manifest:
                 copyright: Optional[Copyright] = None,
                 license: Optional[License] = None,
                 status: Status = Status.Development,
+                ai_access_level: Optional[AIAccessLevel] = AIAccessLevel.All,
                 *args, 
                 **kwargs):
         
@@ -330,6 +345,7 @@ class Manifest:
         self.copyright = copyright
         self.license = license if license is not None else self.licenses.NoLicense # Default to NoLicense
         self.status = status
+        self.ai_access_level = ai_access_level if ai_access_level is not None else self.AIAccessLevel.NoAccess
 
         # Store any additional keyword arguments
         self.additional_info = kwargs
@@ -464,7 +480,8 @@ class Manifest:
                    maintainers: Optional[MaintainerList] = None,
                    copyright: Optional[Copyright] = None,
                    license: Optional[License] = None,
-                   status: Optional[Status] = None) -> "Manifest":
+                   status: Optional[Status] = None,
+                   ai_access_level: Optional[AIAccessLevel] = None) -> "Manifest":
         """
         Creates a new Manifest instance that inherits attributes from this (parent) manifest.
         Attributes that are explicitly provided to createChild will override the parent's attributes.
@@ -480,33 +497,9 @@ class Manifest:
             maintainers=maintainers if maintainers is not None else self.maintainers,
             copyright=copyright if copyright is not None else self.copyright,
             license=license if license is not None else self.license,
-            status=status if status is not None else self.status
+            status=status if status is not None else self.status,
+            ai_access_level=ai_access_level if ai_access_level is not None else self.ai_access_level
             # Note: additional_info from parent is not automatically carried over unless explicitly handled.
         )
     
-    @classmethod
-    def from_parent(cls, parent: "Manifest", 
-                    location: Location,
-                    description: Optional[str] = None,
-                    changelog: Optional[List[Changelog]] = None,
-                    dependencies: Optional[List[Dependency]] = None,
-                    authors: Optional[AuthorList] = None,
-                    maintainers: Optional[MaintainerList] = None,
-                    copyright: Optional[Copyright] = None,
-                    license: Optional[License] = None,
-                    status: Optional[Status] = None) -> "Manifest":
-        """
-        Alternative way to create a child manifest, explicitly passing the parent.
-        This is essentially a wrapper around parent.createChild().
-        """
-        return parent.createChild(
-            location=location,
-            description=description,
-            changelog=changelog,
-            dependencies=dependencies,
-            authors=authors,
-            maintainers=maintainers,
-            copyright=copyright,
-            license=license,
-            status=status
-        ) 
+ 
