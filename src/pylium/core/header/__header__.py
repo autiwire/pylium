@@ -33,7 +33,7 @@ The Impl File is loaded only when the Module1 is instantiated.
 """
 
 from pylium import __project__
-from pylium.core.manifest import Manifest
+from pylium.manifest import Manifest
 
 from abc import ABC, ABCMeta
 import enum
@@ -44,6 +44,19 @@ from pathlib import Path
 
 import logging
 logger = logging.getLogger(__name__)
+
+__manifest__: Manifest = __project__.__manifest__.createChild(
+    location=Manifest.Location(module=__name__),
+    description="Header module",
+    status=Manifest.Status.Development,
+    dependencies=[],
+    changelog=[
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,1,1), author=__project__.__manifest__.authors.rraudzus, 
+                                 notes=["Initial release"]),
+        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,5,19), author=__project__.__manifest__.authors.rraudzus, 
+                                 notes=["Added __manifest__ for module"])
+    ]
+)
 
 class HeaderClassType(enum.Enum):
     """
@@ -67,7 +80,7 @@ class Header(ABC, metaclass=HeaderMeta):
     ClassType = HeaderClassType.Header
     Manifest = Manifest
     
-    __manifest__: Manifest = __project__.__manifest__.createChild(
+    __manifest__: Manifest = __manifest__.createChild(
         location=Manifest.Location(module=__name__, classname=__qualname__),
         description="Base class for all headers",
         status=Manifest.Status.Development,
