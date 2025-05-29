@@ -19,6 +19,7 @@ Pylium provides structured metadata for Python systems, enabling AI agents and t
   - [🤝 Contributing](#-contributing)
   - [🚀 Roadmap](#-roadmap)
   - [👤 Maintainer](#-maintainer)
+  - [💬 Philosophy](#-philosophy)
 
 ---
 
@@ -137,3 +138,9 @@ Please review our [contribution guidelines](CONTRIBUTING.md).
 Rouven Raudzus — [autiwire.de](https://autiwire.de) / [@rraudzus](https://github.com/Verlusti)
 
 > "Make every module self-aware."
+
+## 💬 Philosophy
+*Live like a human. Automate your person.*
+
+Pylium isn’t just about automation — it’s about reclaiming time, focus, and autonomy.
+We believe AI should handle structure, repetition, and boilerplate — so humans can return to meaning, invention, and life.
