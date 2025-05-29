@@ -50,6 +50,8 @@ __manifest__ = Manifest(
                             notes=["Set manifest ai_access_level to read"]),
         Manifest.Changelog(version="0.1.10", date=Manifest.Date(2025,5,29), author=_manifest_core_authors.rraudzus, 
                             notes=["Added license tag to manifest"]),
+        Manifest.Changelog(version="0.1.11", date=Manifest.Date(2025,5,29), author=_manifest_core_authors.rraudzus, 
+                            notes=["Set manifest license to Apache2"]),
     ]
 )
 
