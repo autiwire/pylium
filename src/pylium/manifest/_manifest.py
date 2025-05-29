@@ -198,7 +198,8 @@ class ManifestCopyright(ManifestValue):
     
 
 class ManifestLicense(ManifestValue):
-    def __init__(self, spdx: str, name: str, url: Optional[str] = None):
+    def __init__(self, tag: str, spdx: str, name: str, url: Optional[str] = None):
+        self.tag = tag
         self.spdx = spdx
         self.name = name
         self.url = url
@@ -206,27 +207,27 @@ class ManifestLicense(ManifestValue):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, ManifestLicense):
             return False
-        return self.spdx == other.spdx
+        return self.tag == other.tag
     
     def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
     def __str__(self):
-        return f"{self.spdx} ({self.name}) {self.url}"
+        return f"{self.tag} ({self.spdx}) {self.name} [{self.url}]"
     
     def __repr__(self):
-        return f"{self.spdx} ({self.name}) {self.url}"
+        return f"{self.tag} ({self.spdx}) {self.name} [{self.url}]"
     
 
 class ManifestLicenseList(ManifestValue):
     def __init__(self, licenses: List[ManifestLicense]):
         self._licenses = licenses
 
-    def __getattr__(self, spdx: str) -> ManifestLicense:        
+    def __getattr__(self, tag: str) -> ManifestLicense:        
         for license in self._licenses:
-            if license.spdx == spdx:
+            if license.tag == tag:
                 return license
-        raise AttributeError(f"License {spdx} not found")
+        raise AttributeError(f"License {tag} not found")
 
     def __str__(self):
         return f"{self._licenses}"
@@ -539,14 +540,14 @@ class Manifest:
 
     # Default licenses to pick from
     licenses = ManifestLicenseList([
-        License(spdx="MIT", name="MIT License", url="https://opensource.org/licenses/MIT"),
-        License(spdx="Apache-2.0", name="Apache License 2.0", url="https://opensource.org/licenses/Apache-2.0"),
-        License(spdx="GPL-3.0-only", name="GNU General Public License v3.0 only", url="https://www.gnu.org/licenses/gpl-3.0.en.html"),
-        License(spdx="BSD-3-Clause", name="BSD 3-Clause License", url="https://opensource.org/licenses/BSD-3-Clause"),
-        License(spdx="Unlicense", name="The Unlicense", url="https://unlicense.org/"),
-        License(spdx="CC0-1.0", name="Creative Commons Zero v1.0 Universal", url="https://creativecommons.org/publicdomain/zero/1.0/"),
-        License(spdx=" Proprietary", name="Proprietary", url=None), # Note: Leading space to make it distinct
-        License(spdx="NoLicense", name="No License (Not Open Source)", url=None) # For explicitly stating no license / all rights reserved
+        License(tag="MIT", spdx="MIT", name="MIT License", url="https://opensource.org/licenses/MIT"),
+        License(tag="Apache2", spdx="Apache-2.0", name="Apache License 2.0", url="https://opensource.org/licenses/Apache-2.0"),
+        License(tag="GPL3only", spdx="GPL-3.0-only", name="GNU General Public License v3.0 only", url="https://www.gnu.org/licenses/gpl-3.0.en.html"),
+        License(tag="BSD3Clause", spdx="BSD-3-Clause", name="BSD 3-Clause License", url="https://opensource.org/licenses/BSD-3-Clause"),
+        License(tag="Unlicense", spdx="Unlicense", name="The Unlicense", url="https://unlicense.org/"),
+        License(tag="CC010", spdx="CC0-1.0", name="Creative Commons Zero v1.0 Universal", url="https://creativecommons.org/publicdomain/zero/1.0/"),
+        License(tag="Proprietary", spdx="Proprietary", name="Proprietary", url=None),
+        License(tag="NoLicense", spdx="NoLicense", name="No License (Not Open Source)", url=None), # For explicitly stating no license / all rights reserved
     ])
 
     def __init__(self, 

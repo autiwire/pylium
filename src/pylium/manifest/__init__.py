@@ -26,7 +26,7 @@ __manifest__ = Manifest(
     authors=_manifest_core_authors,
     maintainers=_manifest_core_maintainers,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=_manifest_core_authors.rraudzus),
-    license=Manifest.licenses.NoLicense,
+    license=Manifest.licenses.Apache2,
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=_manifest_core_authors.rraudzus, 
                             notes=["Initial release"]),
@@ -48,6 +48,8 @@ __manifest__ = Manifest(
                             notes=["Added ai_access_level to manifest"]),
         Manifest.Changelog(version="0.1.9", date=Manifest.Date(2025,5,28), author=_manifest_core_authors.rraudzus, 
                             notes=["Set manifest ai_access_level to read"]),
+        Manifest.Changelog(version="0.1.10", date=Manifest.Date(2025,5,29), author=_manifest_core_authors.rraudzus, 
+                            notes=["Added license tag to manifest"]),
     ]
 )
 
