@@ -560,9 +560,9 @@ class Manifest:
                 copyright: Optional[Copyright] = None,
                 license: Optional[License] = None,
                 status: Status = Status.Development,
-                access_mode: AccessMode = AccessMode.Sync,
-                ai_access_level: Optional[AIAccessLevel] = AIAccessLevel.All,
-                thread_safety: Optional[ThreadSafety] = ThreadSafety.Unsafe,
+                accessMode: AccessMode = AccessMode.Sync,
+                aiAccessLevel: Optional[AIAccessLevel] = AIAccessLevel.All,
+                threadSafety: Optional[ThreadSafety] = ThreadSafety.Unsafe,
                 frontend: Optional[Frontend] = Frontend.NoFrontend,
                 backend: Optional[Backend] = Backend.NoBackend,
                 *args, 
@@ -577,14 +577,14 @@ class Manifest:
         self.copyright = copyright
         self.license = license if license is not None else self.licenses.NoLicense # Default to NoLicense
         self.status = status
-        self.accessMode = access_mode
-        self.threadSafety = thread_safety
+        self.accessMode = accessMode
+        self.threadSafety = threadSafety
         self.frontend = frontend
         self.backend = backend
-        self.aiAccessLevel = ai_access_level if ai_access_level is not None else self.AIAccessLevel.NoAccess
+        self.aiAccessLevel = aiAccessLevel if aiAccessLevel is not None else self.AIAccessLevel.NoAccess
 
         # Store any additional keyword arguments
-        self.additional_info = kwargs
+        self.additionalInfo = kwargs
 
     @property
     def contributors(self) -> ContributorsList:
@@ -717,11 +717,11 @@ class Manifest:
                    copyright: Optional[Copyright] = None,
                    license: Optional[License] = None,
                    status: Optional[Status] = None,
-                   access_mode: Optional[AccessMode] = None,
-                   thread_safety: Optional[ThreadSafety] = None,
+                   accessMode: Optional[AccessMode] = None,
+                   threadSafety: Optional[ThreadSafety] = None,
                    frontend: Optional[Frontend] = None,
                    backend: Optional[Backend] = None,
-                   ai_access_level: Optional[AIAccessLevel] = None) -> "Manifest":
+                   aiAccessLevel: Optional[AIAccessLevel] = None) -> "Manifest":
         """
         Creates a new Manifest instance that inherits attributes from this (parent) manifest.
         Attributes that are explicitly provided to createChild will override the parent's attributes.
@@ -738,11 +738,11 @@ class Manifest:
             copyright=copyright if copyright is not None else self.copyright,
             license=license if license is not None else self.license,
             status=status if status is not None else self.status,
-            access_mode=access_mode if access_mode is not None else self.accessMode,    
-            thread_safety=thread_safety if thread_safety is not None else self.threadSafety,
+            accessMode=accessMode if accessMode is not None else self.accessMode,    
+            threadSafety=threadSafety if threadSafety is not None else self.threadSafety,
             frontend=frontend if frontend is not None else self.frontend,
             backend=backend if backend is not None else self.backend,
-            ai_access_level=ai_access_level if ai_access_level is not None else self.aiAccessLevel,
+            aiAccessLevel=aiAccessLevel if aiAccessLevel is not None else self.aiAccessLevel,
             # Note: additional_info from parent is not automatically carried over unless explicitly handled.
         )
     

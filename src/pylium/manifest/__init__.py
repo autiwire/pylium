@@ -21,7 +21,7 @@ __manifest__ = Manifest(
     location=Manifest.Location(module=__name__, classname=Manifest.__qualname__),
     description="Base class for all manifests",    
     status=Manifest.Status.Development,
-    ai_access_level=Manifest.AIAccessLevel.Read,
+    aiAccessLevel=Manifest.AIAccessLevel.Read,
     dependencies=[],
     authors=_manifest_core_authors,
     maintainers=_manifest_core_maintainers,
