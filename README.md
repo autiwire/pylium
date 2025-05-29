@@ -1,11 +1,27 @@
 # Pylium
 
-**AI-native metadata framework** for modular, self-describing Python systems — built for the next generation of AI: from generative to agentic to emergent.
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.md)
+[![PyPI version](https://img.shields.io/pypi/v/pylium.svg?logo=pypi&label=PyPI)](https://pypi.org/project/pylium/) (coming soon)
+
+**AI-native metadata framework** for modular, self-describing Python systems — designed for the next generation of AI applications, from generative models to agentic and emergent systems.
 
 > 🧠 Structured intelligence.
 > 🛠️ Designed for systems that think — and evolve.
 
 Pylium provides structured metadata for Python systems, enabling AI agents and toolchains to reason about code, enforce access control, and dynamically adapt modules. It's designed for environments where modularity, traceability, and self-awareness of code components are essential.
+
+## Table of Contents
+- [Pylium](#pylium)
+  - [Table of Contents](#table-of-contents)
+  - [✨ Features](#-features)
+  - [🧬 Emergent AI: The Next Evolution](#-emergent-ai-the-next-evolution)
+    - [Why Pylium for Emergent AI?](#why-pylium-for-emergent-ai)
+  - [📀 Manifest Example](#-manifest-example)
+  - [📦 Installation](#-installation)
+  - [📄 Licensing](#-licensing)
+  - [🤝 Contributing](#-contributing)
+  - [🚀 Roadmap](#-roadmap)
+  - [👤 Maintainer](#-maintainer)
 
 ---
 
@@ -28,7 +44,7 @@ Pylium provides structured metadata for Python systems, enabling AI agents and t
 
 ---
 
-## 🧼 Emergent AI: The Next Evolution
+## 🧬 Emergent AI: The Next Evolution
 
 Pylium is more than a framework — it's a **building block for emergent AI systems**. In a world where AI not only generates code but writes, tests, optimizes, and uses it autonomously, Pylium provides the structure and control needed.
 
@@ -43,21 +59,31 @@ Pylium is more than a framework — it's a **building block for emergent AI syst
 ## 📀 Manifest Example
 
 ```python
+
+# Create an AuthorList instance
+_project_authors = Manifest.AuthorList([Manifest.Author(tag="rr", name="Rouven Raudzus", email="raudzus@autiwire.de", company="AutiWire GmbH")])
+_project_maintainers = _project_authors # might differ 
+
 __manifest__ = Manifest(
-    location=Manifest.Location(__name__, __qualname__),
+    location=Manifest.Location(__name__, __qualname__), # For a class
+    # location=Manifest.Location(__name__), # For a module
     description="My impressive AI module",
-    authors=[
-        Manifest.Author(tag="rr", name="Rouven Raudzus", email="raudzus@autiwire.de", company="AutiWire GmbH")
+    authors=_project_authors,
+    maintainers=_project_maintainers,
+    copyright=Manifest.Copyright(date=Manifest.Date(2025, 1, 1), author=_project_authors.rr),
+    license=Manifest.licenses.Apache2,
+    status=Manifest.Status.Development,
+    dependencies=[
+        Manifest.Dependency(type=Manifest.Dependency.Type.PIP, name="fire", version=">=0.7.0"),
     ],
     changelog=[
-        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 29))
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 29), author=_project_authors.rr, notes=["Initial release of my impressive AI module."])
     ],
-    license=Manifest.licenses.Apache_2_0,
-    status=Manifest.Status.Development,
     thread_safety=Manifest.ThreadSafety.ThreadSafe,
     access_mode=Manifest.AccessMode.Hybrid,
     frontend=Manifest.Frontend.API,
     backend=Manifest.Backend.SQLite | Manifest.Backend.File,
+    ai_access_level=Manifest.AIAccessLevel.Read | Manifest.AIAccessLevel.SuggestOnly,
 )
 ```
 
@@ -83,19 +109,19 @@ pip install -e .
 
 ## 📄 Licensing
 
-Pylium is licensed under the Apache License 2.0 — see `LICENSE`.
+Pylium is licensed under the Apache License 2.0 — see [`LICENSE.md`](LICENSE.md).
 Individual modules or classes may define stricter licenses via their manifest headers.
 
 ⚠️ For commercial use of proprietary components or for consulting, please contact:
-📧 [licensing@autiwire.de](mailto:licensing@autiwire.de)
-🌐 [https://autiwire.de/pylium](https://autiwire.de/pylium)
+📧 [info@autiwire.de](mailto:info@autiwire.de)
+🌐 [https://autiwire.de](https://autiwire.de)
 
 ---
 
 ## 🤝 Contributing
 
 Pull requests, discussions, and feedback are welcome.
-Please review our contribution guidelines (coming soon).
+Please review our [contribution guidelines](CONTRIBUTING.md).
 
 ---
 
@@ -112,6 +138,6 @@ Please review our contribution guidelines (coming soon).
 
 ## 👤 Maintainer
 
-Rouven Raudzus — [autiwire.de](https://autiwire.de) / [@raudzus](https://github.com/raudzus)
+Rouven Raudzus — [autiwire.de](https://autiwire.de) / [@rraudzus](https://github.com/Verlusti)
 
 > "Make every module self-aware."
