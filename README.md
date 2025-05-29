@@ -76,11 +76,11 @@ __manifest__ = Manifest(
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 29), author=_project_authors.rr, notes=["Initial release of my impressive AI module."])
     ],
-    thread_safety=Manifest.ThreadSafety.ThreadSafe,
-    access_mode=Manifest.AccessMode.Hybrid,
+    threadSafety=Manifest.ThreadSafety.ThreadSafe,
+    accessMode=Manifest.AccessMode.Hybrid,
     frontend=Manifest.Frontend.API,
     backend=Manifest.Backend.SQLite | Manifest.Backend.File,
-    ai_access_level=Manifest.AIAccessLevel.Read | Manifest.AIAccessLevel.SuggestOnly,
+    aiAccessLevel=Manifest.AIAccessLevel.Read | Manifest.AIAccessLevel.SuggestOnly,
 )
 ```
 
@@ -106,12 +106,11 @@ pip install -e .
 
 ## 📄 Licensing
 
-Pylium is licensed under the Apache License 2.0 — see [`LICENSE.md`](LICENSE.md).
-Individual modules or classes may define stricter licenses via their manifest headers.
+The Pylium framework is primarily licensed under the Apache License 2.0 (see [`LICENSE.md`](LICENSE.md)), which acts as the fallback. Individual modules and classes can define their own licenses via their manifest headers, which will take precedence over the default.
 
 ⚠️ For commercial use of proprietary components or for consulting, please contact:
-📧 [info@autiwire.de](mailto:info@autiwire.de)
-🌐 [https://autiwire.de](https://autiwire.de)
+*   📧 Email: [info@autiwire.de](mailto:info@autiwire.de)
+*   🌐 Website: [https://autiwire.de](https://autiwire.de)
 
 ---
 
