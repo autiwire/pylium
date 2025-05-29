@@ -1,8 +1,5 @@
 # Pylium
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.md)
-[![PyPI version](https://img.shields.io/pypi/v/pylium.svg?logo=pypi&label=PyPI)](https://pypi.org/project/pylium/) (coming soon)
-
 **AI-native metadata framework** for modular, self-describing Python systems — designed for the next generation of AI applications, from generative models to agentic and emergent systems.
 
 > 🧠 Structured intelligence.
