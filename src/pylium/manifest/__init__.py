@@ -65,6 +65,8 @@ Manifest.__manifest__ = __manifest__.createChild(
                             notes=["Initial release"]),
         Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,5,19), author=_manifest_core_authors.rraudzus, 
                             notes=["Added per-class-manifest"]),
+        Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,7), author=_manifest_core_authors.rraudzus, 
+                            notes=["Added shortName property to manifest class"])
     ]
 )
 

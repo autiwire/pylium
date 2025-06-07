@@ -75,6 +75,16 @@ class ManifestLocation(ManifestValue):
         self.file = str(Path(spec.origin).resolve())
         self.fqn = f"{self.module}.{self.classname}" if self.classname else self.module
 
+    @property
+    def shortName(self) -> str:
+        """Returns the module name with implementation suffixes removed."""
+        remove_strs = [".__header__", ".__impl__", "_h", "_impl"]
+        module_name = self.module
+        for remove_str in remove_strs:
+            if module_name.endswith(remove_str):
+                return module_name[:-len(remove_str)]
+        return module_name
+
     def __str__(self):
         return f"{self.fqn}"
     
