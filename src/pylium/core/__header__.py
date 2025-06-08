@@ -11,7 +11,17 @@ __manifest__ = __project__.createChild(
                            notes=["Initial definition of pylium.core package manifest."]),
         Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 5, 28), 
                            author=__project__.authors.rraudzus,
-                           notes=["Moved manifest definition to __header__.py"])
+                           notes=["Moved manifest definition to __header__.py"]),
+        Manifest.Changelog(version="0.2.0", date=Manifest.Date(2025, 6, 8),
+                           author=__project__.authors.rraudzus,
+                           notes=["Major CLI system architectural overhaul across core package",
+                                  "Implemented tree-based CLI architecture replacing dynamic class building",
+                                  "Added comprehensive recursive navigation support with consistent behavior",
+                                  "Enhanced manifest resolution supporting both flat and nested file patterns",
+                                  "Improved CLI categorization (CLASS, COMMANDS, SUBMODULES) with fire integration",
+                                  "Unified CLI behavior between direct and recursive access patterns",
+                                  "Established foundation for multi-frontend support (CLI, FastAPI, etc.)",
+                                  "Enhanced Header class integration and discoverability in CLI tree"]),
     ]
 )
 

@@ -14,7 +14,12 @@ __manifest__ = __project__.createChild(
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 28), 
                            author=__project__.authors.rraudzus,
-                           notes=["Initial definition of pylium.core.app package manifest."])
+                           notes=["Initial definition of pylium.core.app package manifest."]),
+        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 6, 8),
+                           author=__project__.authors.rraudzus,
+                           notes=["Implemented recursive CLI system with tree-based command structure",
+                                  "Added support for both flat (module_h.py) and nested (module/__header__.py) patterns",
+                                  "Fixed CLI visibility to show locally defined classes and Header base class"]),
     ]
 )
 
@@ -43,7 +48,12 @@ class App(Header):
         changelog=[
             Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 28),
                                author=__project__.authors.rraudzus,
-                               notes=["Initial definition of pylium.core.app package manifest."])
+                               notes=["Initial definition of pylium.core.app package manifest."]),
+            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 5, 28),
+                               author=__project__.authors.rraudzus,
+                               notes=["Enhanced CLI integration with recursive navigation support",
+                                      "App class now properly discoverable in CLI tree structure",
+                                      "Consistent behavior between direct and recursive CLI access"]),
         ]
     )
 

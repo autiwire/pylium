@@ -39,6 +39,9 @@ __manifest__ = Manifest(
                                     notes=["Added __version__"]),
                 Manifest.Changelog(version="0.1.6", date=Manifest.Date(2025,5,28), author=_project_core_authors.rraudzus, 
                                     notes=["Moved __version__, __manifest__ and __project__ to __header__.py"]),
+                Manifest.Changelog(version="0.2.0", date=Manifest.Date(2025,6,8), author=_project_core_authors.rraudzus,
+                                    notes=["Major CLI system overhaul with tree-based architecture",
+                                           "Added recursive navigation and multi-frontend support foundation"]),
                 ],
 )
 

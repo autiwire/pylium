@@ -56,7 +56,14 @@ __manifest__: Manifest = __project__.__manifest__.createChild(
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,1,1), author=__project__.__manifest__.authors.rraudzus, 
                                  notes=["Initial release"]),
         Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,5,19), author=__project__.__manifest__.authors.rraudzus, 
-                                 notes=["Added __manifest__ for module"])
+                                 notes=["Added __manifest__ for module"]),
+        Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,8), author=__project__.__manifest__.authors.rraudzus,
+                                 notes=["Enhanced CLI integration and discoverability",
+                                        "Added @expose decorator for marking functions as CLI-accessible",
+                                        "Improved Header class visibility checking in CLI tree building",
+                                        "Enhanced manifest resolution for dual file pattern support",
+                                        "Header classes now properly categorized in CLI CLASS sections",
+                                        "Fixed recursive CLI navigation for consistent Header class discovery"]),
     ]
 )
 
@@ -137,7 +144,13 @@ class Header(ABC, metaclass=HeaderMeta):
             Manifest.Changelog(version="0.1.3", date=Manifest.Date(2025,5,21), author=__project__.__manifest__.authors.rraudzus, 
                                  notes=["Creating manifest as child of project manifest now"]),
             Manifest.Changelog(version="0.1.4", date=Manifest.Date(2025,5,25), author=__project__.__manifest__.authors.rraudzus, 
-                                 notes=["Added __class_type__ to the header class"])
+                                 notes=["Added __class_type__ to the header class"]),
+            Manifest.Changelog(version="0.1.5", date=Manifest.Date(2025,6,8), author=__project__.__manifest__.authors.rraudzus,
+                                 notes=["Improved CLI discoverability and navigation",
+                                        "Header base class now properly appears in CLI CLASS sections",
+                                        "Enhanced subclass detection for CLI tree building",
+                                        "Fixed visibility rules to include Header alongside locally defined classes",
+                                        "Better integration with recursive CLI navigation system"]),
         ]
     )
         

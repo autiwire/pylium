@@ -13,7 +13,16 @@ __manifest__: Manifest = __project__.__manifest__.createChild(
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,6), author=__project__.__manifest__.authors.rraudzus, 
                                  notes=["Initial release"]),
         Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,6), author=__project__.__manifest__.authors.rraudzus, 
-                                 notes=["Added __manifest__ for module"])
+                                 notes=["Added __manifest__ for module"]),
+        Manifest.Changelog(version="0.2.0", date=Manifest.Date(2025,6,8), author=__project__.__manifest__.authors.rraudzus,
+                                 notes=["Complete architectural overhaul to tree-based CLI system",
+                                        "Implemented CommandNode and CommandTree classes for canonical command structure",
+                                        "Added CLIRenderer for python-fire frontend compatibility",
+                                        "Support for both flat (module_h.py) and nested (module/__header__.py) file patterns",
+                                        "Fixed manifest resolution to prefer header manifests over module manifests",
+                                        "Implemented proper visibility checking for locally defined vs imported classes",
+                                        "Added categorization support (CLASS, COMMANDS, SUBMODULES) with fire categories",
+                                        "Ensured recursive CLI calls behave identically to direct module calls"]),
     ]
 )
 
@@ -27,6 +36,14 @@ class CLI(Header):
         description="The core CLI building component for Pylium.",
         status=Manifest.Status.Development,
         frontend=Manifest.Frontend.CLI,
+        changelog=[
+            Manifest.Changelog(version="0.2.0", date=Manifest.Date(2025,6,8), author=__project__.__manifest__.authors.rraudzus,
+                               notes=["Redesigned CLI class with tree-based architecture",
+                                      "Replaced dynamic class building with CommandTree/CommandNode approach", 
+                                      "Added support for recursive navigation with consistent behavior",
+                                      "Enhanced manifest discovery for proper header resolution",
+                                      "CLI now serves as frontend-agnostic command tree builder"]),
+        ]
     )
 
     def __init__(self, manifest: Manifest):
