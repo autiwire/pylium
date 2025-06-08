@@ -91,6 +91,16 @@ class ManifestLocation(ManifestValue):
     def __repr__(self):
         return f"{self.fqn} @ {self.file}"
 
+    @property
+    def isPackage(self) -> bool:
+        """
+        Checks if the location points to a package.
+        """
+        spec = importlib.util.find_spec(self.shortName)
+        #print(f"DEBUG: spec: {spec}") # DEBUG
+        #print(f"DEBUG: spec.submodule_search_locations: {spec.submodule_search_locations}") # DEBUG
+        return spec is not None and spec.submodule_search_locations is not None
+
 
 class ManifestDependencyType(Enum):
     PYLIUM = "pylium"

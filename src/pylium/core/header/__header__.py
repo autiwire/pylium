@@ -41,12 +41,14 @@ from typing import Optional, Type
 import importlib
 import inspect
 from pathlib import Path
+import threading
+import functools
 
 import logging
 logger = logging.getLogger(__name__)
 
 __manifest__: Manifest = __project__.__manifest__.createChild(
-    location=Manifest.Location(module=__name__),
+    location=Manifest.Location(module=__name__, classname=None),
     description="Header module",
     status=Manifest.Status.Development,
     dependencies=[],
@@ -57,6 +59,46 @@ __manifest__: Manifest = __project__.__manifest__.createChild(
                                  notes=["Added __manifest__ for module"])
     ]
 )
+
+class classProperty(object):
+    """
+    Read-only class property decorator.
+    Allows accessing a class method like a property (e.g., `ClassName.property`).
+    """
+    def __init__(self, fget):
+        self.fget = fget
+
+    def __get__(self, obj, owner):
+        return self.fget(owner)
+
+def dlock(lock_attr, instance_attr):
+    """
+    Decorator for thread-safe, lazy initialization using double-checked locking.
+
+    This decorator wraps a *creator* method. It uses attributes on the class
+    for the lock and for caching the created instance.
+    """
+    def decorator(creator_method):
+        @functools.wraps(creator_method)
+        def wrapper(cls, *args, **kwargs):
+            instance = getattr(cls, instance_attr, None)
+            if instance is None:
+                lock = getattr(cls, lock_attr)
+                with lock:
+                    instance = getattr(cls, instance_attr, None)  # Double-check
+                    if instance is None:
+                        instance = creator_method(cls, *args, **kwargs)
+                        setattr(cls, instance_attr, instance)
+            return instance
+        return wrapper
+    return decorator
+
+def expose(func):
+    """
+    Decorator to mark a function as exposed.
+    """
+    func._is_exposed = True
+    return func
 
 class HeaderClassType(enum.Enum):
     """

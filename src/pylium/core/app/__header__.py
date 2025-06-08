@@ -1,66 +1,94 @@
-from pylium.core.header import Header, Manifest
-from pylium.core.module import Module
-# from pylium.core.component import Component
+import threading
+from abc import abstractmethod
 
-from typing import ClassVar, List, Optional, Type
-import enum
+from pylium import __project__
+from pylium.manifest import Manifest
+from pylium.core.header import Header, classProperty, dlock, expose
 
-class AppRunMode(enum.Enum):
-    CLI = "cli"
-    API = "api"
-    TASK = "task"
 
-    def __str__(self):
-        return self.value
-    
-    def __repr__(self):
-        return self.value
+__manifest__ = __project__.createChild(
+    location=Manifest.Location(module=__name__, classname=None), 
+    description="Application management and execution module",
+    status=Manifest.Status.Development,
+    frontend=Manifest.Frontend.CLI,
+    changelog=[
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 28), 
+                           author=__project__.authors.rraudzus,
+                           notes=["Initial definition of pylium.core.app package manifest."])
+    ]
+)
+
+def test():
+    print("test")
 
 class App(Header):
     """
-    This class is the main entry point for the application.
-    It manages different run modes like CLI, API, and Tasks.
-    """
-    manifest = Manifest(
-        name="Pylium Core Application",
-        description="Core application component capable of running in CLI, API, or Task mode.",
-        authors=[
-            {"name": "Rouven Raudzus", "email": "raudzus@autiwire.org"}
-        ],
-        changelog=[
-            {"version": "0.0.1", "notes": ["Initial release"], "date": "2025-05-15"}
-        ],
-        dependencies=[
-            "pydantic==2.10.2", 
-            "fire==0.5.0", 
-            "fastapi==0.105.1", 
-            "uvicorn==0.25.0"
-        ],
-        location=__file__
-    )
-    __class_type__ = Header.ClassType.Header
+    Application management and execution class
 
-    RunMode = AppRunMode
+    This class uses a lazy-loaded, singleton pattern for its default instance,
+    which is accessible via the `App.default` class property.
+
+    To use a custom subclass as the default, register it *before* first
+    accessing `App.default`:
+    `App.set_default_class(YourCustomApp)`
+
+    If you need a separate, isolated application environment, you can
+    instantiate it directly: `my_new_app = App()`
+    """
+
+    __manifest__ = __manifest__.createChild(
+        location=Manifest.Location(module=__name__, classname=__qualname__),
+        description="Application management and execution class",
+        status=Manifest.Status.Development,
+        changelog=[
+            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 28),
+                               author=__project__.authors.rraudzus,
+                               notes=["Initial definition of pylium.core.app package manifest."])
+        ]
+    )
+
+    _default_instance: "App" = None
+    _default_class: type = None
+    _default_lock = threading.Lock()
+
+    @classmethod
+    def set_default_class(cls, app_class: type):
+        """
+        Registers a subclass to be used for the default instance.
+
+        This must be called before the default instance is first accessed.
+
+        :param app_class: The class to use (must be a subclass of App).
+        """
+        if not issubclass(app_class, cls):
+            raise TypeError(f"{app_class.__name__} must be a subclass of {cls.__name__}")
+        if cls._default_instance is not None:
+            raise RuntimeError("Cannot change default app class after instance has been created.")
+        cls._default_class = app_class
+
+    @classProperty
+    @dlock("_default_lock", "_default_instance")
+    def default(cls) -> "App":
+        """
+        The default, shared instance of the App.
+
+        This is a lazy-loaded property that returns the singleton instance
+        of the configured App class (e.g., `App` or a registered subclass).
+        """
+        # If a custom class was not set, use App itself as the default.
+        if cls._default_class is None:
+            cls._default_class = cls
+        return cls._default_class()
+
+    @abstractmethod
+    def run(self, manifest: "Manifest"):
+        """
+        Runs the application component based on its manifest.
+
+        This is an abstract method that must be implemented by a subclass,
+        typically in the corresponding `__impl__.py` file.
+        """
+        pass
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def run(self, run_mode: AppRunMode, cli_entry: Optional[Type[Module]|Type[Component]] = None, task_entry=None, api_entry=None):
-        """
-        Executes the application in the specified mode.
-        Implementation is in AppImpl.
-
-        Args:
-            run_mode: The mode to run the application in (CLI, API, TASK).
-            cli_entry: The entry point for CLI mode (Module or Component type).
-            task_entry: The entry point or configuration for TASK mode.
-            api_entry: The entry point or configuration for API mode.
-        """
-        if type(self) == App: # pragma: no cover
-             raise NotImplementedError(
-                "App.run() called directly on Header. "
-                "This method should be executed on an AppImpl instance."
-            )
-        pass
-
-
