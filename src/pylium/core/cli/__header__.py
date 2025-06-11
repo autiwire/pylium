@@ -1,7 +1,5 @@
 from pylium.core import __manifest__ as __parent__
-from pylium.core.header import Header
-from pylium.manifest import Manifest
-
+from pylium.core.header import Manifest, Header
 
 __manifest__: Manifest = __parent__.createChild(
     location=Manifest.Location(module=__name__, classname=None),

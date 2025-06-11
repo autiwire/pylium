@@ -1,6 +1,5 @@
 from pylium.core import __manifest__ as __parent__
-from pylium.manifest import Manifest
-from pylium.core.header import Header
+from pylium.core.header import Manifest, Header
 
 from abc import abstractmethod
 from typing import Optional, Any, Dict
