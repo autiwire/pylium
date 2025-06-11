@@ -15,7 +15,7 @@ _project_core_authors = Manifest.AuthorList([
 
 _project_core_maintainers = Manifest.AuthorList(_project_core_authors._authors.copy())
 
-__manifest__ = Manifest(
+__manifest__ : Manifest = Manifest(
     location=Manifest.Location(module=__name__),
     description="Pylium project",
     status=Manifest.Status.Development,

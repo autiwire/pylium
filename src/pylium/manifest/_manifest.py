@@ -534,6 +534,37 @@ class Manifest:
     Child manifests can be created using:
     manifest.createChild(location="new location") or
     Manifest.from_parent(parent_manifest, location="new location")
+    
+    ## Manifest Reference Patterns
+    
+    Three key patterns for referencing manifests in the hierarchy:
+
+    Let there be a module called "a.b.c" with a class called "D" and
+    every module has a manifest, and every class has a manifest.
+
+    The manifest for a module or class is defined in the module or class header
+    and called __manifest__.
+
+    Now in the root "a", set __project__ = __manifest__, this marks the root
+    manifest for the project.
+    
+    In the module "a.b", import the manifest from the root "a" and set
+    __parent__ = __manifest__, this marks the parent manifest for the module.
+    Create the __manifest__ for the module by calling __parent__.createChild(...),
+    this creates a child manifest for the module.
+
+    In the module "a.b.c", create the __manifest__ for the module by calling,
+    do as above, __parent__ = __manifest__, __manifest__ = __parent__.createChild(...), 
+    where parent is the manifest from the module "a.b".
+
+    Define the class "D" with the manifest __manifest__ = __parent__.createChild(...),
+    where parent is the manifest from the module "a.b.c".
+
+    This is how the manifest hierarchy is created and propagated through the
+    modules and classes tree.
+    
+    This explicit pattern ensures AI-readable code and maintains clear separation
+    between structural hierarchy and authorship/policy inheritance.
     """
 
     # Manifests own manifest

@@ -32,7 +32,7 @@ The Impl File is loaded only when the Module1 is instantiated.
 
 """
 
-from pylium import __project__
+from pylium.core import __manifest__ as __parent__
 from pylium.manifest import Manifest
 
 from abc import ABC, ABCMeta
@@ -47,23 +47,26 @@ import functools
 import logging
 logger = logging.getLogger(__name__)
 
-__manifest__: Manifest = __project__.__manifest__.createChild(
+__manifest__: Manifest = __parent__.createChild(
     location=Manifest.Location(module=__name__, classname=None),
     description="Header module",
     status=Manifest.Status.Development,
     dependencies=[],
     changelog=[
-        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,1,1), author=__project__.__manifest__.authors.rraudzus, 
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,1,1), author=__parent__.authors.rraudzus, 
                                  notes=["Initial release"]),
-        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,5,19), author=__project__.__manifest__.authors.rraudzus, 
+        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,5,19), author=__parent__.authors.rraudzus, 
                                  notes=["Added __manifest__ for module"]),
-        Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,8), author=__project__.__manifest__.authors.rraudzus,
+        Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,8), author=__parent__.authors.rraudzus,
                                  notes=["Enhanced CLI integration and discoverability",
                                         "Added @expose decorator for marking functions as CLI-accessible",
                                         "Improved Header class visibility checking in CLI tree building",
                                         "Enhanced manifest resolution for dual file pattern support",
                                         "Header classes now properly categorized in CLI CLASS sections",
                                         "Fixed recursive CLI navigation for consistent Header class discovery"]),
+        Manifest.Changelog(version="0.1.3", date=Manifest.Date(2025,6,11), author=__parent__.authors.rraudzus,
+                                 notes=["Added __parent__ to the header module manifest to allow for proper manifest resolution",
+                                        "More explicitness and readability for AI: Use __manifest__ : Manifest = ... instead of __manifest__ = ..."]),
     ]
 )
 
@@ -135,17 +138,17 @@ class Header(ABC, metaclass=HeaderMeta):
         status=Manifest.Status.Development,
         dependencies=[],
         changelog=[
-            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,1,1), author=__project__.__manifest__.authors.rraudzus, 
+            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,1,1), author=__parent__.authors.rraudzus, 
                                  notes=["Initial release"]),
-            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,5,19), author=__project__.__manifest__.authors.rraudzus, 
+            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,5,19), author=__parent__.authors.rraudzus, 
                                  notes=["Added maintainers pointing to authors of the project"]),
-            Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,5,20), author=__project__.__manifest__.authors.rraudzus, 
+            Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,5,20), author=__parent__.authors.rraudzus,
                                  notes=["Added license pointing to project license"]),
-            Manifest.Changelog(version="0.1.3", date=Manifest.Date(2025,5,21), author=__project__.__manifest__.authors.rraudzus, 
+            Manifest.Changelog(version="0.1.3", date=Manifest.Date(2025,5,21), author=__parent__.authors.rraudzus, 
                                  notes=["Creating manifest as child of project manifest now"]),
-            Manifest.Changelog(version="0.1.4", date=Manifest.Date(2025,5,25), author=__project__.__manifest__.authors.rraudzus, 
+            Manifest.Changelog(version="0.1.4", date=Manifest.Date(2025,5,25), author=__parent__.authors.rraudzus, 
                                  notes=["Added __class_type__ to the header class"]),
-            Manifest.Changelog(version="0.1.5", date=Manifest.Date(2025,6,8), author=__project__.__manifest__.authors.rraudzus,
+            Manifest.Changelog(version="0.1.5", date=Manifest.Date(2025,6,8), author=__parent__.authors.rraudzus,
                                  notes=["Improved CLI discoverability and navigation",
                                         "Header base class now properly appears in CLI CLASS sections",
                                         "Enhanced subclass detection for CLI tree building",

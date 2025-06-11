@@ -1,25 +1,27 @@
-import threading
-from abc import abstractmethod
-
-from pylium import __project__
+from pylium.core import __manifest__ as __parent__
 from pylium.manifest import Manifest
 from pylium.core.header import Header, classProperty, dlock, expose
 
+import threading
+from abc import abstractmethod
 
-__manifest__ = __project__.createChild(
+
+__manifest__ : Manifest = __parent__.createChild(
     location=Manifest.Location(module=__name__, classname=None), 
     description="Application management and execution module",
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 28), 
-                           author=__project__.authors.rraudzus,
+                           author=__parent__.authors.rraudzus,
                            notes=["Initial definition of pylium.core.app package manifest."]),
         Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 6, 8),
-                           author=__project__.authors.rraudzus,
+                           author=__parent__.authors.rraudzus,
                            notes=["Implemented recursive CLI system with tree-based command structure",
                                   "Added support for both flat (module_h.py) and nested (module/__header__.py) patterns",
                                   "Fixed CLI visibility to show locally defined classes and Header base class"]),
+        Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,11), author=__parent__.authors.rraudzus,
+                                 notes=["Added __parent__ to the app module manifest to allow for proper manifest resolution"]),
     ]
 )
 
@@ -41,16 +43,16 @@ class App(Header):
     instantiate it directly: `my_new_app = App()`
     """
 
-    __manifest__ = __manifest__.createChild(
+    __manifest__ : Manifest = __manifest__.createChild(
         location=Manifest.Location(module=__name__, classname=__qualname__),
         description="Application management and execution class",
         status=Manifest.Status.Development,
         changelog=[
             Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 28),
-                               author=__project__.authors.rraudzus,
+                               author=__parent__.authors.rraudzus,
                                notes=["Initial definition of pylium.core.app package manifest."]),
             Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 5, 28),
-                               author=__project__.authors.rraudzus,
+                               author=__parent__.authors.rraudzus,
                                notes=["Enhanced CLI integration with recursive navigation support",
                                       "App class now properly discoverable in CLI tree structure",
                                       "Consistent behavior between direct and recursive CLI access"]),
