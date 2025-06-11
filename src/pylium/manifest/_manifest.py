@@ -592,7 +592,7 @@ class Manifest:
         self.description = description
         self.changelog = changelog if changelog is not None else []
         self.dependencies = dependencies if dependencies is not None else []
-        self.authors = authors if authors is not None else self._default_authors
+        self.authors = authors if authors is not None else Manifest.AuthorList([])
         self.maintainers = maintainers if maintainers is not None else self.authors # If maintainers not given, use authors
         self.copyright = copyright
         self.license = license if license is not None else self.licenses.NoLicense # Default to NoLicense
