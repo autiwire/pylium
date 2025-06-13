@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod, ABCMeta
 
 from typing import ClassVar, List, Optional, Type, Any, Generator, Tuple, Callable, Union
+from types import FunctionType
 from packaging.version import Version 
 
 import datetime
@@ -54,26 +55,36 @@ class ManifestValue(object):
 
 
 class ManifestLocation(ManifestValue):
-    def __init__(self, module: str, classname: Optional[str] = None):
+    def __init__(self, module: str, classname: Optional[str] = None, funcname: Optional[str] = None):
         """
         Create a manifest location.
         
         Args:
             module: The module name:
-                   - For modules: use __name__
-                   - For classes: use __module__
+                   - If modules: use __name__
+                   - If classes: use __module__
+            
             classname: Optional class name (typically __qualname__ for classes)
+
+            funcname: Optional function name (typically __qualname__ for functions)
+
         """
         self.module = module
         self.classname = classname
-        
+        self.funcname = funcname
+
         # Get the file location from the module name
         spec = importlib.util.find_spec(self.module)
         if spec is None or spec.origin is None:
             raise ImportError(f"Could not find module {self.module}")
             
-        self.file = str(Path(spec.origin).resolve())
-        self.fqn = f"{self.module}.{self.classname}" if self.classname else self.module
+        self.file = str(Path(spec.origin).resolve())        
+        if self.funcname and self.classname:
+            self.fqn = f"{self.module}.{self.classname}.{self.funcname}"
+        elif self.classname:
+            self.fqn = f"{self.module}.{self.classname}"
+        else:
+            self.fqn = self.module
 
     @property
     def shortName(self) -> str:
@@ -94,12 +105,40 @@ class ManifestLocation(ManifestValue):
     @property
     def isPackage(self) -> bool:
         """
-        Checks if the location points to a package.
+        Checks if the location points to a package (and not a single .py file)
         """
         spec = importlib.util.find_spec(self.shortName)
         #print(f"DEBUG: spec: {spec}") # DEBUG
         #print(f"DEBUG: spec.submodule_search_locations: {spec.submodule_search_locations}") # DEBUG
         return spec is not None and spec.submodule_search_locations is not None
+    
+    @property
+    def isModule(self) -> bool:
+        """
+        Checks if the location points to a module.
+        """
+        return self.classname is None and self.funcname is None
+
+    @property
+    def isClass(self) -> bool:
+        """
+        Checks if the location points to a class.
+        """
+        return self.classname is not None and self.funcname is None
+    
+    @property
+    def isFunction(self) -> bool:
+        """
+        Checks if the location points to a function.
+        """
+        return self.funcname is not None
+
+    @property
+    def isMethod(self) -> bool:
+        """
+        Checks if the location points to a method.
+        """
+        return self.funcname is not None and self.classname is not None
 
 
 class ManifestDependencyType(Enum):
@@ -601,7 +640,28 @@ class Manifest:
         License(tag="NoLicense", spdx="NoLicense", name="No License (Not Open Source)", url=None), # For explicitly stating no license / all rights reserved
     ])
 
-    def __init__(self, 
+    @classmethod
+    def func(cls, manifest: "Manifest") -> Callable:
+        """
+        Decorator to attach a Manifest to a function.
+        Automatically sets ManifestLocation based on the function's definition.
+        """
+        def decorator(func: FunctionType) -> FunctionType:
+            # Auto-fill location if not already set
+            print(f"DEBUG: manifest.location: {manifest.location}") # DEBUG
+            print(f"DEBUG: func: {func}") # DEBUG
+            if manifest.location is None:
+                classname = None
+                if func.__qualname__:
+                    classname = func.__qualname__.split(".")[0]
+                manifest.location = Manifest.Location(module=func.__module__, classname=classname, funcname=func.__name__)
+
+            # Attach manifest
+            func.__manifest__ = manifest
+            return func
+        return decorator
+
+    def __init__(self,
                 location: Location,
                 description: str = "",
                 changelog: Optional[List[Changelog]] = None, 
@@ -636,6 +696,70 @@ class Manifest:
 
         # Store any additional keyword arguments
         self.additionalInfo = kwargs
+
+    @property
+    def parent(self) -> Optional["Manifest"]:
+        """
+        Dynamically determines the parent manifest based on the location.
+        For module manifests, looks for parent module's manifest.
+        For class manifests, looks for containing module's manifest.
+        """
+
+        if not self.location:
+            return None
+            
+        # For class manifests, parent is the module manifest
+        if self.location.isClass:
+            try:
+                module = importlib.import_module(self.location.module)
+                return getattr(module, "__manifest__", None)
+            except ImportError:
+                return None
+
+        elif self.location.isModule:
+            # For module manifests, parent is the parent module
+            # First try to catch __parent__ in the module
+            try:
+                parent = importlib.import_module(self.location.module)
+                return getattr(parent, "__parent__", None)
+            except ImportError:
+                pass
+
+            # If not found, try to find the parent module via path
+            module_parts = self.location.shortName.split(".")
+            if len(module_parts) > 1:
+                parent_module = ".".join(module_parts[:-1])
+                try:
+                    parent = importlib.import_module(parent_module)
+                    return getattr(parent, "__manifest__", None)
+                except ImportError:
+                    return None
+
+        elif self.location.isFunction:
+            # For function manifests, parent is the class manifest
+            if self.location.isClass:
+                try:
+                    module = importlib.import_module(self.location.module)
+                    return getattr(module, "__manifest__", None)
+                except ImportError:
+                    return None
+
+        return None
+    
+    @property
+    def __project__(self) -> Optional["Manifest"]:
+        """
+        The project manifest is the root manifest for the project.
+        It is the module that has __project__ in its header.
+        """
+        mod = self        
+        while mod is not None:
+            # Check if my own module has __project__
+            if hasattr(importlib.import_module(mod.location.module), "__project__"):
+                return mod
+            # If not, check if my parent has __project__
+            mod = mod.parent
+        return None
 
     @property
     def contributors(self) -> ContributorsList:
@@ -698,7 +822,6 @@ class Manifest:
             # Assuming the first entry in the changelog is the last update date
             return self.changelog[0].date
         return None
-
 
     @property
     def doc(self) -> str:
@@ -782,19 +905,18 @@ class Manifest:
         return Manifest(
             location=location,
             description=description if description is not None else self.description,
-            changelog=changelog if changelog is not None else self.changelog, # Consider if merging or deepcopy is needed for lists
+            changelog=changelog if changelog is not None else self.changelog,
             dependencies=dependencies if dependencies is not None else self.dependencies,
             authors=authors if authors is not None else self.authors,
             maintainers=maintainers if maintainers is not None else self.maintainers,
             copyright=copyright if copyright is not None else self.copyright,
             license=license if license is not None else self.license,
             status=status if status is not None else self.status,
-            accessMode=accessMode if accessMode is not None else self.accessMode,    
+            accessMode=accessMode if accessMode is not None else self.accessMode,
             threadSafety=threadSafety if threadSafety is not None else self.threadSafety,
             frontend=frontend if frontend is not None else self.frontend,
             backend=backend if backend is not None else self.backend,
-            aiAccessLevel=aiAccessLevel if aiAccessLevel is not None else self.aiAccessLevel,
-            # Note: additional_info from parent is not automatically carried over unless explicitly handled.
+            aiAccessLevel=aiAccessLevel if aiAccessLevel is not None else self.aiAccessLevel
         )
     
  

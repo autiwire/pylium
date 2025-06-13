@@ -7,6 +7,11 @@ class AppImpl(App):
     """
     __class_type__ = Header.ClassType.Impl
 
+    @Manifest.func(App.test.__manifest__)
+    def test(self):
+        print("test_impl")
+        print(f"Manifest: {self.__manifest__}")
+
     def run(self, manifest: "Manifest"):
         """
         Runs a component. For CLI frontends, it instantiates and

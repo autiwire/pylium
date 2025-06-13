@@ -63,6 +63,20 @@ class App(Header):
     _default_class: type = None
     _default_lock = threading.Lock()
 
+    @abstractmethod
+    @Manifest.func(__manifest__.createChild(
+        location=None,
+        description="Test function for the App class",
+        status=Manifest.Status.Development,
+        changelog=[
+            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,13), author=__parent__.authors.rraudzus,
+                                 notes=["Initial release"]),
+        ]
+    ))
+    @expose
+    def test(self):
+        print("test")
+
     @classmethod
     def set_default_class(cls, app_class: type):
         """

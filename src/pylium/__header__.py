@@ -47,3 +47,4 @@ __manifest__ : Manifest = Manifest(
 
 # This manifest is defined as a project manifest. By doing this, this module will become the project root.
 __project__ = __manifest__
+
