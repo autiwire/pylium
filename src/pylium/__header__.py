@@ -5,7 +5,7 @@ except ImportError:
     # or _version.py has not been generated (e.g., a raw source checkout).
     __version__ = "0.0.0.unknown" # Or some other placeholder
 
-print("Hello, World from pylium/__init__.py!")
+#print("Hello, World from pylium/__header__.py!")
 
 from .manifest import Manifest
 

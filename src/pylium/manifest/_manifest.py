@@ -1,555 +1,12 @@
-from abc import ABC, abstractmethod, ABCMeta
-
-from typing import ClassVar, List, Optional, Type, Any, Generator, Tuple, Callable, Union
+from typing import ClassVar, List, Optional, Any, Callable
 from types import FunctionType
 from packaging.version import Version 
 
-import datetime
-import inspect
-from enum import Enum, auto, Flag
 import importlib.machinery
 import importlib.util
-from pathlib import Path
-from os.path import join
-import sys
-from types import ModuleType
-import inspect
 
 from logging import getLogger
 logger = getLogger(__name__)
-
-class ManifestMeta(ABCMeta): # type: ignore
-    """
-    Metaclass for classes that may define a `__manifest__` attribute.
-    It currently logs a warning if a class's `__manifest__` location 
-    doesn't match the class's actual module and qualname, assuming location 
-    is set during Manifest instantiation.
-    """
-    def __init__(cls, name, bases, dct):
-        super().__init__(name, bases, dct)
-        
-        manifest_attr = dct.get('__manifest__')
-        if isinstance(manifest_attr, Manifest):
-            # Assuming location is set correctly during Manifest instantiation 
-            # (e.g., via Manifest.Location or createChild).
-            # This becomes a validation/awareness step.
-            expected_module = cls.__module__
-            expected_qualname = cls.__qualname__
-            
-            if manifest_attr.location.module != expected_module or \
-               manifest_attr.location.classname != expected_qualname:
-                logger.debug(
-                    f"Manifest location for {expected_module}.{expected_qualname} "
-                    f"(module={manifest_attr.location.module}, class={manifest_attr.location.classname}) "
-                    f"does not precisely match class's actual location. This might be intentional if manifest "
-                    f"location is explicitly set to something different."
-                )
-
-
-class ManifestValue(object):
-    """Base marker class for various manifest data structures."""
-    Date = datetime.date
-
-    def __init__(self):
-        pass
-
-
-class ManifestLocation(ManifestValue):
-    def __init__(self, module: str, classname: Optional[str] = None, funcname: Optional[str] = None):
-        """
-        Create a manifest location.
-        
-        Args:
-            module: The module name:
-                   - If modules: use __name__
-                   - If classes: use __module__
-            
-            classname: Optional class name (typically __qualname__ for classes)
-
-            funcname: Optional function name (typically __qualname__ for functions)
-
-        """
-        self.module = module
-        self.classname = classname
-        self.funcname = funcname
-
-        # Get the file location from the module name
-        spec = importlib.util.find_spec(self.module)
-        if spec is None or spec.origin is None:
-            raise ImportError(f"Could not find module {self.module}")
-            
-        self.file = str(Path(spec.origin).resolve())        
-        if self.funcname and self.classname:
-            self.fqn = f"{self.module}.{self.classname}.{self.funcname}"
-        elif self.classname:
-            self.fqn = f"{self.module}.{self.classname}"
-        else:
-            self.fqn = self.module
-
-    @property
-    def shortName(self) -> str:
-        """Returns the module name with implementation suffixes removed."""
-        remove_strs = [".__header__", ".__impl__", "_h", "_impl"]
-        module_name = self.module
-        for remove_str in remove_strs:
-            if module_name.endswith(remove_str):
-                return module_name[:-len(remove_str)]
-        return module_name
-
-    def __str__(self):
-        return f"{self.fqn}"
-    
-    def __repr__(self):
-        return f"{self.fqn} @ {self.file}"
-
-    @property
-    def isPackage(self) -> bool:
-        """
-        Checks if the location points to a package (and not a single .py file)
-        """
-        spec = importlib.util.find_spec(self.shortName)
-        #print(f"DEBUG: spec: {spec}") # DEBUG
-        #print(f"DEBUG: spec.submodule_search_locations: {spec.submodule_search_locations}") # DEBUG
-        return spec is not None and spec.submodule_search_locations is not None
-    
-    @property
-    def isModule(self) -> bool:
-        """
-        Checks if the location points to a module.
-        """
-        return self.classname is None and self.funcname is None
-
-    @property
-    def isClass(self) -> bool:
-        """
-        Checks if the location points to a class.
-        """
-        return self.classname is not None and self.funcname is None
-    
-    @property
-    def isFunction(self) -> bool:
-        """
-        Checks if the location points to a function.
-        """
-        return self.funcname is not None
-
-    @property
-    def isMethod(self) -> bool:
-        """
-        Checks if the location points to a method.
-        """
-        return self.funcname is not None and self.classname is not None
-
-
-class ManifestDependencyType(Enum):
-    PYLIUM = "pylium"
-    PIP = "pip"
-
-    def __str__(self):
-        return self.value
-    
-    def __repr__(self):
-        return self.value
-
-
-class ManifestDependency(ManifestValue):
-    Type = ManifestDependencyType
-    
-    def __init__(self, name: str, version: str, type: ManifestDependencyType = ManifestDependencyType.PIP):
-        self.type = type
-        self.name = name
-        self.version = version
-
-    def __str__(self):
-        return f"{self.name} ({self.version})"
-    
-    def __repr__(self):
-        return f"{self.name} ({self.version})"
-
-
-class ManifestAuthor(ManifestValue):
-    def __init__(self, tag: str, name: str, email: Optional[str] = None, company: Optional[str] = None, since_version: Optional[str] = None, since_date: Optional[ManifestValue.Date] = None):    
-        self.tag = tag
-        self.name = name
-        self.email = email
-        self.company = company
-        self.since_version = since_version
-        self.since_date = since_date
-
-    def since(self, version: str, date: ManifestValue.Date) -> "ManifestAuthor":
-        # return a copy of the author with the since version and date
-        return ManifestAuthor(self.tag, self.name, self.email, self.company, version, date)
-    
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, ManifestAuthor):
-            return False
-        return self.tag == other.tag
-    
-    def __ne__(self, other: Any) -> bool:
-        return not self.__eq__(other)
-    
-    def __hash__(self) -> int:
-        return hash((self.tag))
-    
-    def __str__(self):
-        return f"{self.name} ({self.email}) {self.company} {self.since_version} {self.since_date}"
-
-    def __repr__(self):
-        return f"{self.name} ({self.email}) {self.company} [since: {self.since_version} @ {self.since_date}]"
-
-    
-class ManifestAuthorList(ManifestValue):
-    def __init__(self, authors: List[ManifestAuthor]):
-        self._authors = authors
-
-    def __getattr__(self, tag: str) -> ManifestAuthor:        
-        for author in self._authors:
-            if author.tag == tag:
-                return author
-        raise AttributeError(f"Author {tag} not found")
-
-    def __getitem__(self, index: int) -> ManifestAuthor:
-        return self._authors[index]
-
-    def __len__(self) -> int:
-        return len(self._authors)
-
-    def __str__(self):
-        return f"{self._authors}"
-    
-    def __repr__(self):
-        return f"{self._authors}"
-    
-    def __iter__(self) -> Generator[ManifestAuthor, None, None]:
-        return iter(self._authors)
-
-
-# After ManifestAuthorList definition but before Manifest class
-# Type alias for maintainers list - semantically different but technically the same
-ManifestMaintainerList = ManifestAuthorList
-ManifestContributorsList = ManifestAuthorList
-
-
-class ManifestChangelog(ManifestValue):
-    def __init__(self, version: Optional[str] = None, date: Optional[ManifestValue.Date] = None, author: Optional[ManifestAuthor] = None, notes: Optional[List[str]] = None):
-        self.version = version
-        self.date = date
-        self.author = author
-        self.notes = notes if notes is not None else []
-
-    def __str__(self):
-        return f"{self.version} ({self.date}) {self.author} {self.notes}"
-    
-    def __repr__(self):
-        return f"{self.version} ({self.date}) {self.author} {self.notes}"
-
-
-class ManifestCopyright(ManifestValue):
-    def __init__(self, date: Optional[ManifestValue.Date], author: Optional[ManifestAuthor] = None):
-        self.date = date
-        self.author = author
-
-    def __str__(self):
-        return f"(c) ({self.date}) {self.author}"
-    
-    def __repr__(self):
-        return f"(c) ({self.date}) {self.author}"
-    
-
-class ManifestLicense(ManifestValue):
-    def __init__(self, tag: str, spdx: str, name: str, url: Optional[str] = None):
-        self.tag = tag
-        self.spdx = spdx
-        self.name = name
-        self.url = url
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, ManifestLicense):
-            return False
-        return self.tag == other.tag
-    
-    def __ne__(self, other: Any) -> bool:
-        return not self.__eq__(other)
-
-    def __str__(self):
-        return f"{self.tag} ({self.spdx}) {self.name} [{self.url}]"
-    
-    def __repr__(self):
-        return f"{self.tag} ({self.spdx}) {self.name} [{self.url}]"
-    
-
-class ManifestLicenseList(ManifestValue):
-    def __init__(self, licenses: List[ManifestLicense]):
-        self._licenses = licenses
-
-    def __getattr__(self, tag: str) -> ManifestLicense:        
-        for license in self._licenses:
-            if license.tag == tag:
-                return license
-        raise AttributeError(f"License {tag} not found")
-
-    def __str__(self):
-        return f"{self._licenses}"
-    
-    def __repr__(self):
-        return f"{self._licenses}"
-    
-    def __getitem__(self, index: int) -> ManifestLicense:
-        return self._licenses[index]
-    
-    def __len__(self) -> int:
-        return len(self._licenses)
-    
-    def __iter__(self) -> Generator[ManifestLicense, None, None]:
-        return iter(self._licenses)
-        
-
-class ManifestStatus(Enum):
-    Development = "Development"
-    Production = "Production"
-    Deprecated = "Deprecated"
-    Unstable = "Unstable"
-
-    def __str__(self):
-        return self.value
-    
-    def __repr__(self):
-        return self.value
-
-
-class ManifestAccessMode(Enum):
-    Sync = "sync"
-    Async = "async"
-    Hybrid = "hybrid"
-
-    def __str__(self):
-        return self.value
-    
-    def __repr__(self):
-        return self.value
-
-
-class ManifestThreadSafety(Enum):
-    Unsafe     = "unsafe"
-    Reentrant  = "reentrant"
-    ThreadSafe = "thread-safe"
-    ActorSafe  = "actor-safe"
-    Immutable  = "immutable"
-
-    def __str__(self):
-        return f"{self.name.lower()}"
-
-    def __repr__(self):
-        return f"{self.name.lower()}"
-
-    def __hash__(self) -> int:
-        return hash(self.value)
-    
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, ManifestThreadSafety):
-            return False
-        return self.value == other.value
-    
-    def __ne__(self, other: Any) -> bool:
-        return not self.__eq__(other)
-
-    @property
-    def description(self) -> str:
-        return {
-            ManifestThreadSafety.Unsafe: "No synchronization, may cause race conditions.",
-            ManifestThreadSafety.Reentrant: "Reentrant for single thread recursion, not parallel-safe.",
-            ManifestThreadSafety.ThreadSafe: "Internally synchronized for parallel access.",
-            ManifestThreadSafety.ActorSafe: "Thread-safe via actor/queue-based serialized access.",
-            ManifestThreadSafety.Immutable: "Immutable after creation, safe by design."
-        }[self]
-
-
-class ManifestFrontend(Flag):
-    NoFrontend      = 0
-    CLI             = 1 << 0
-    API             = 1 << 1
-    TUI             = 1 << 2
-    GUI             = 1 << 3
-    Web             = 1 << 4
-    All             = CLI | API | TUI | GUI | Web
-
-    def __str__(self):
-        # If the flag instance has a specific name (it's a single defined flag or a named combination like 'All')
-        if self.name is not None:
-            return self.name.lower()
-        else:
-            # It's an unnamed combination (e.g., CLI | API) or a value like 0 if not directly named.
-            decomposed_members = list(self)
-            
-            if not decomposed_members:
-                # This implies self.value is 0, as list(self) for non-zero flags gives its components.
-                # Try to find a name for the zero value among defined members.
-                if self.value == 0:
-                    for member_in_class in self.__class__:
-                        if member_in_class.value == 0:
-                            return member_in_class.name.lower() # e.g., "nofrontend"
-                    return "0" # Default string for 0 if no specific zero-value member like NoFrontend found
-                else:
-                    # Highly unlikely for Flags: name is None, list() is empty, but value isn't 0.
-                    return str(self.value) 
-
-            # For unnamed combinations (e.g. CLI | API), list their lowercase names
-            return " | ".join(m.name.lower() for m in decomposed_members)
-    
-    def __repr__(self):
-        cls_name = self.__class__.__name__
-        decomposed_members = list(self)
-
-        if not decomposed_members:
-            # This typically means self.value == 0 and no canonical member is named for 0.
-            if self.value == 0:
-                for member_in_class in self.__class__:
-                    if member_in_class.value == 0:
-                        return f"{cls_name}.{member_in_class.name}" 
-                return f"<{cls_name}: 0>" 
-            else:
-                return f"<{cls_name} value: {self.value}>"
-
-        member_reprs = [f"{cls_name}.{m.name}" for m in decomposed_members]
-        return " | ".join(member_reprs)
-
-
-class ManifestBackendGroup(Flag):
-    NoBackendGroup = 0
-    Database = 1 << 0
-    File = 1 << 1
-    Network = 1 << 2
-    Container = 1 << 3
-    All = Database | File | Network | Container
-
-    def __str__(self):
-        # If the flag instance has a specific name (it's a single defined flag or a named combination like 'All')
-        if self.name is not None:
-            return self.name.lower()
-        else:
-            # It's an unnamed combination (e.g., Database | File) or a value like 0 if not directly named.
-            decomposed_members = list(self)
-            
-            if not decomposed_members:
-                # This implies self.value is 0.
-                if self.value == 0:
-                    for member_in_class in self.__class__:
-                        if member_in_class.value == 0:
-                            return member_in_class.name.lower() # e.g., "nobackendgroup"
-                    return "0" 
-                else:
-                    return str(self.value) 
-
-            return " | ".join(m.name.lower() for m in decomposed_members)
-    
-    def __repr__(self):
-        cls_name = self.__class__.__name__
-        decomposed_members = list(self)
-
-        if not decomposed_members:
-            if self.value == 0:
-                for member_in_class in self.__class__:
-                    if member_in_class.value == 0:
-                        return f"{cls_name}.{member_in_class.name}" 
-                return f"<{cls_name}: 0>" 
-            else:
-                return f"<{cls_name} value: {self.value}>"
-
-        member_reprs = [f"{cls_name}.{m.name}" for m in decomposed_members]
-        return " | ".join(member_reprs)
-
-
-class ManifestBackend(Flag):
-    NoBackend       = 0
-    SQLite          = 1 << 0
-    Redis           = 1 << 1
-    PostgreSQL      = 1 << 2
-    File            = 1 << 3
-    MQTT            = 1 << 4
-    Docker          = 1 << 5
-    All             = SQLite | Redis | PostgreSQL | File | MQTT | Docker
-
-    @property
-    def group(self) -> ManifestBackendGroup:
-        mapping = {
-            ManifestBackend.SQLite: ManifestBackendGroup.Database,
-            ManifestBackend.Redis: ManifestBackendGroup.Database | ManifestBackendGroup.Network,
-            ManifestBackend.PostgreSQL: ManifestBackendGroup.Database | ManifestBackendGroup.Network,
-            ManifestBackend.File: ManifestBackendGroup.File,
-            ManifestBackend.MQTT: ManifestBackendGroup.Network,
-            ManifestBackend.Docker: ManifestBackendGroup.Container | ManifestBackendGroup.Network,
-        }
-
-        result = ManifestBackendGroup.NoBackendGroup
-        for member in self.__class__:
-            if self & member:
-                result |= mapping.get(member, ManifestBackendGroup.NoBackendGroup)
-        return result
-
-    def __str__(self):
-        base_str_val = ""
-        # If the flag instance has a specific name (it's a single defined flag or a named combination like 'All')
-        if self.name is not None:
-            base_str_val = self.name.lower()
-        else:
-            # It's an unnamed combination (e.g., SQLite | Redis) or a value like 0 if not directly named.
-            decomposed_members = list(self)
-            
-            if not decomposed_members:
-                # This implies self.value is 0.
-                if self.value == 0:
-                    # Try to find a name for the zero value among defined members.
-                    for member_in_class in self.__class__:
-                        if member_in_class.value == 0: 
-                            base_str_val = member_in_class.name.lower()
-                            break 
-                    else: 
-                        base_str_val = "0" 
-                else:
-                    base_str_val = str(self.value) 
-            else:
-                base_str_val = " | ".join(m.name.lower() for m in decomposed_members)
-        
-        group_str = str(self.group).replace(" | ", ", ")
-        return f"{base_str_val} (group: {group_str})"
-    
-    def __repr__(self):
-        cls_name = self.__class__.__name__
-        base_repr_val = ""
-        decomposed_members = list(self)
-
-        if not decomposed_members:
-            # This typically means self.value == 0.
-            if self.value == 0:
-                # Try to find a named zero member for a canonical representation
-                for member_in_class in self.__class__:
-                    if member_in_class.value == 0: # name will exist for defined members
-                        base_repr_val = f"{cls_name}.{member_in_class.name}"
-                        break
-                else: # no break
-                    base_repr_val = f"<{cls_name}: 0>" 
-            else:
-                # Should not happen for Flags if list(self) is empty and value isn't 0
-                base_repr_val = f"<{cls_name} value: {self.value}>"
-        else:
-            member_reprs = [f"{cls_name}.{m.name}" for m in decomposed_members]
-            base_repr_val = " | ".join(member_reprs)
-        
-        group_repr = repr(self.group) # Calculate group repr
-        return f"{base_repr_val} (group: {group_repr})"
-    
-
-# Note: This is a bitmask, so the order of the flags is important
-# This is a hint for the AI to use the correct access level,
-# mainly used for coding assistance, not for security
-# It might work, but AI might completely ignore it
-class ManifestAIAccessLevel(Flag):
-    NoAccess = 1 << 0
-    Read = 1 << 1
-    SuggestOnly = 1 << 2
-    ForkAllowed = 1 << 3
-    Write = 1 << 4
-    All = NoAccess | Read | SuggestOnly | ForkAllowed | Write
 
 
 class Manifest:
@@ -610,35 +67,31 @@ class Manifest:
     # Usually here in header classes the manifest is defined
     __manifest__: ClassVar["Manifest"] = None
 
-    Date = ManifestValue.Date
-    Location = ManifestLocation
-    Author = ManifestAuthor
-    AuthorList = ManifestAuthorList
-    MaintainerList = ManifestMaintainerList
-    ContributorsList = ManifestContributorsList
-    Changelog = ManifestChangelog
-    Dependency = ManifestDependency
-    Copyright = ManifestCopyright
-    License = ManifestLicense
-    Status = ManifestStatus
-    AccessMode = ManifestAccessMode
-    ThreadSafety = ManifestThreadSafety
-    Frontend = ManifestFrontend
-    Backend = ManifestBackend
-    BackendGroup = ManifestBackendGroup
-    AIAccessLevel = ManifestAIAccessLevel
+    from ._types import ManifestValue as Value
+    from ._types import ManifestLocation as Location
+    from ._types import ManifestAuthor as Author
+    from ._types import ManifestAuthorList as AuthorList
+    from ._types import ManifestMaintainerList as MaintainerList
+    from ._types import ManifestContributorList as ContributorList
+    from ._types import ManifestChangelog as Changelog
+    from ._types import ManifestDependency as Dependency
+    
+    from ._license import ManifestCopyright as Copyright
+    from ._license import ManifestLicense as License
+    from ._license import ManifestLicenseList as LicenseList
+    from ._license import licenses as licenses
 
-    # Default licenses to pick from
-    licenses = ManifestLicenseList([
-        License(tag="MIT", spdx="MIT", name="MIT License", url="https://opensource.org/licenses/MIT"),
-        License(tag="Apache2", spdx="Apache-2.0", name="Apache License 2.0", url="https://opensource.org/licenses/Apache-2.0"),
-        License(tag="GPL3only", spdx="GPL-3.0-only", name="GNU General Public License v3.0 only", url="https://www.gnu.org/licenses/gpl-3.0.en.html"),
-        License(tag="BSD3Clause", spdx="BSD-3-Clause", name="BSD 3-Clause License", url="https://opensource.org/licenses/BSD-3-Clause"),
-        License(tag="Unlicense", spdx="Unlicense", name="The Unlicense", url="https://unlicense.org/"),
-        License(tag="CC010", spdx="CC0-1.0", name="Creative Commons Zero v1.0 Universal", url="https://creativecommons.org/publicdomain/zero/1.0/"),
-        License(tag="Proprietary", spdx="Proprietary", name="Proprietary", url=None),
-        License(tag="NoLicense", spdx="NoLicense", name="No License (Not Open Source)", url=None), # For explicitly stating no license / all rights reserved
-    ])
+    from ._enums import ManifestStatus as Status
+    from ._enums import ManifestAccessMode as AccessMode
+    from ._enums import ManifestThreadSafety as ThreadSafety
+
+    from ._flags import ManifestFrontend as Frontend
+    from ._flags import ManifestBackend as Backend
+    from ._flags import ManifestBackendGroup as BackendGroup
+    from ._flags import ManifestAIAccessLevel as AIAccessLevel
+
+    Date = Value.Date
+
 
     @classmethod
     def func(cls, manifest: "Manifest") -> Callable:
@@ -707,7 +160,16 @@ class Manifest:
 
         if not self.location:
             return None
-            
+
+        elif self.location.isFunction:
+            # For function manifests, parent is the class manifest
+            if self.location.isClass:
+                try:
+                    module = importlib.import_module(self.location.module)
+                    return getattr(module, "__manifest__", None)
+                except ImportError:
+                    return None
+
         # For class manifests, parent is the module manifest
         if self.location.isClass:
             try:
@@ -716,7 +178,13 @@ class Manifest:
             except ImportError:
                 return None
 
-        elif self.location.isModule:
+        elif self.location.isModule:               
+            # Special case for manifest module
+            _manifest_module_shortname = ".".join(Manifest.__module__.split(".")[:-1])
+            if self.location.shortName == _manifest_module_shortname:
+                from pylium import __manifest__ as parent
+                return parent
+            
             # For module manifests, parent is the parent module
             # First try to catch __parent__ in the module
             try:
@@ -732,15 +200,6 @@ class Manifest:
                 try:
                     parent = importlib.import_module(parent_module)
                     return getattr(parent, "__manifest__", None)
-                except ImportError:
-                    return None
-
-        elif self.location.isFunction:
-            # For function manifests, parent is the class manifest
-            if self.location.isClass:
-                try:
-                    module = importlib.import_module(self.location.module)
-                    return getattr(module, "__manifest__", None)
                 except ImportError:
                     return None
 
@@ -762,7 +221,7 @@ class Manifest:
         return None
 
     @property
-    def contributors(self) -> ContributorsList:
+    def contributors(self) -> ContributorList:
         # We create a list of contributors from authors, maintainers, and changelog entries
         _contributors = set() # Using a set to store authors to avoid duplicates
         if self.authors:
@@ -775,7 +234,7 @@ class Manifest:
             for entry in self.changelog:
                 if entry.author:
                     _contributors.add(entry.author) # Add author from changelog
-        return ManifestContributorsList(list(_contributors)) 
+        return Manifest.ContributorList(list(_contributors)) 
 
     @property
     def version(self) -> Version:

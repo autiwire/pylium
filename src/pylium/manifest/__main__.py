@@ -11,3 +11,5 @@ from pylium.core.app import App
 
 if __name__ == "__main__":
     App.default.run(manifest=__manifest__)
+
+

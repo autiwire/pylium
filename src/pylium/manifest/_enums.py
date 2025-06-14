@@ -1,0 +1,73 @@
+from enum import Enum
+from typing import Any
+
+
+class ManifestDependencyType(Enum):
+    PYLIUM = "pylium"
+    PIP = "pip"
+
+    def __str__(self):
+        return self.value
+    
+    def __repr__(self):
+        return self.value
+    
+
+class ManifestStatus(Enum):
+    Development = "Development"
+    Production = "Production"
+    Deprecated = "Deprecated"
+    Unstable = "Unstable"
+
+    def __str__(self):
+        return self.value
+    
+    def __repr__(self):
+        return self.value
+
+
+class ManifestAccessMode(Enum):
+    Sync = "sync"
+    Async = "async"
+    Hybrid = "hybrid"
+
+    def __str__(self):
+        return self.value
+    
+    def __repr__(self):
+        return self.value
+
+
+class ManifestThreadSafety(Enum):
+    Unsafe     = "unsafe"
+    Reentrant  = "reentrant"
+    ThreadSafe = "thread-safe"
+    ActorSafe  = "actor-safe"
+    Immutable  = "immutable"
+
+    def __str__(self):
+        return f"{self.name.lower()}"
+
+    def __repr__(self):
+        return f"{self.name.lower()}"
+
+    def __hash__(self) -> int:
+        return hash(self.value)
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestThreadSafety):
+            return False
+        return self.value == other.value
+    
+    def __ne__(self, other: Any) -> bool:
+        return not self.__eq__(other)
+
+    @property
+    def description(self) -> str:
+        return {
+            ManifestThreadSafety.Unsafe: "No synchronization, may cause race conditions.",
+            ManifestThreadSafety.Reentrant: "Reentrant for single thread recursion, not parallel-safe.",
+            ManifestThreadSafety.ThreadSafe: "Internally synchronized for parallel access.",
+            ManifestThreadSafety.ActorSafe: "Thread-safe via actor/queue-based serialized access.",
+            ManifestThreadSafety.Immutable: "Immutable after creation, safe by design."
+        }[self]
