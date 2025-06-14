@@ -177,20 +177,23 @@ class Manifest:
         For class manifests, looks for containing module's manifest.
         """
 
-        if not self.location:
+        if not self.location or not self.location.module:
             return None
 
-        elif self.location.isFunction:
-            # For function manifests, parent is the class manifest
-            if self.location.isClass:
-                try:
-                    module = importlib.import_module(self.location.module)
+        if self.location.isFunction:
+            # For function manifests, parent is the class or module manifest
+            try:                
+                module = importlib.import_module(self.location.module)
+                if self.location.isMethod:                    
+                    my_class = getattr(module, self.location.classname)
+                    return getattr(my_class, "__manifest__", None)                    
+                else:
                     return getattr(module, "__manifest__", None)
-                except ImportError:
-                    return None
+            except ImportError:
+                return None
 
         # For class manifests, parent is the module manifest
-        if self.location.isClass:
+        elif self.location.isClass:
             try:
                 module = importlib.import_module(self.location.module)
                 return getattr(module, "__manifest__", None)
@@ -221,6 +224,8 @@ class Manifest:
                     return getattr(parent, "__manifest__", None)
                 except ImportError:
                     return None
+
+        print(f"  PARENT: {self.location.fqn} is not found")
 
         return None
 
@@ -265,25 +270,41 @@ class Manifest:
         try:
             # Only look in the current module, not recursively
             module = importlib.import_module(self.location.shortName)
-            for name, obj in inspect.getmembers(module):
-                child_manifest = None
-                
-                # Search module for child manifests of modules, classes and functions as it is a module
-                if self.location.isModule:
-                    if ((self.location.isPackage and inspect.ismodule(obj)) or inspect.isclass(obj)) and hasattr(obj, "__manifest__"):
-                        child_manifest = obj.__manifest__
-
-                # Search for child manifests of functions in class
-                if self.location.isClass:
-                    if inspect.isclass(obj) and hasattr(obj, "__manifest__"):
-                        child_manifest = obj.__manifest__
-
-                if child_manifest and child_manifest.parent == self and not child_manifest in childs:
-                    #print(f"CHILD__: {child_manifest.location.shortName}")
-                    childs.append(child_manifest)
+            #print(f"  SELF: {self.location.fqn}")
+            if self.location.isModule and self.location.isPackage:
+                #print(f"  MODULE: {self.location.fqnShort}")
+                for name, member in inspect.getmembers(module):
+                    if name.startswith("__") and name.endswith("__"):
+                        continue
+                    #print(f"  NAME: {name}")
+                    if hasattr(member, "__manifest__"):
+                        #print(f"  MANIFEST: {member.__manifest__.location.fqnShort}")
+                        if member.__manifest__.parent == self and not member.__manifest__ in childs:
+                            #print(f"ADD_MOD: {member.__manifest__.location.fqnShort}")
+                            childs.append(member.__manifest__)
+            
+            elif self.location.isClass:
+                #print(f"  SELF: {self.location.fqnShort}")
+                my_class = getattr(module, self.location.classname)
+                if hasattr(my_class, "__manifest__"):                    
+                    for name, member in inspect.getmembers(my_class):
+                        if name.startswith("__") and name.endswith("__"):
+                            continue
+                        #print(f"  NAME: {name}")
+                        if hasattr(member, "__manifest__"):
+                            #print(f"XNAME: {name}  MANIFEST: {member.__manifest__.location.fqnShort} PARENT: {member.__manifest__.parent.location.fqn}")
+                            if member.__manifest__.parent == self and not member.__manifest__ in childs:
+                                #print(f"ADD_CLASS: {member.__manifest__.location.fqnShort}")
+                                childs.append(member.__manifest__)
+            
+            elif self.location.isFunction:
+                # Function dont have childs
+                pass
 
         except ImportError:
             pass      
+
+        #print(f"  CHILDREN: {childs}")
 
         return childs
 
@@ -434,7 +455,7 @@ class Manifest:
                    status: Optional[Status] = None,
                    accessMode: Optional[AccessMode] = None,
                    threadSafety: Optional[ThreadSafety] = None,
-                   frontend: Optional[Frontend] = None,
+                   frontend: Optional[Frontend] = Frontend.NoFrontend,
                    backend: Optional[Backend] = None,
                    aiAccessLevel: Optional[AIAccessLevel] = None) -> "Manifest":
         """
@@ -455,7 +476,7 @@ class Manifest:
             status=status if status is not None else self.status,
             accessMode=accessMode if accessMode is not None else self.accessMode,
             threadSafety=threadSafety if threadSafety is not None else self.threadSafety,
-            frontend=frontend if frontend is not None else self.frontend,
+            frontend=frontend,
             backend=backend if backend is not None else self.backend,
             aiAccessLevel=aiAccessLevel if aiAccessLevel is not None else self.aiAccessLevel
         )

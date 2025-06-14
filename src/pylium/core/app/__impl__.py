@@ -1,5 +1,8 @@
 from .__header__ import App, Header, Manifest
-# from pylium.core.cli import CLI # This top-level import creates a cycle.
+from pylium.core.frontend import Frontend
+
+from typing import Type
+import sys
 
 class AppImpl(App):
     """
@@ -12,18 +15,46 @@ class AppImpl(App):
         print("test_impl")
         print(f"Manifest: {self.__manifest__}")
 
-    def run(self, manifest: "Manifest"):
+    @classmethod
+    @Manifest.func(App.test2.__manifest__)
+    def test2(cls):
+        print("test2_impl")
+        print(f"Manifest: {cls.__manifest__}")
+
+
+    def run(self, frontend: Type[App.Frontend], manifest: Manifest):
         """
         Runs a component. For CLI frontends, it instantiates and
         starts the main CLI component.
         """
 
-        print(f"Running app with manifest: {manifest}")
-        print(f"Frontend: {manifest.frontend}")
+        from pylium.core.cli import CLI
 
-        if manifest.frontend == self.Manifest.Frontend.CLI:
-            from pylium.core.cli import CLI
-            print(f"Running CLI with manifest: {manifest}")
-            CLI(manifest=manifest).start()
-        else:
-            print(f"Running non-CLI component: {manifest.location.module}")
+#        print(f"Running app with manifest: {manifest}")
+#        print(f"Frontend in app: {frontend.name}")
+#        print(f"Frontend in manifest: {manifest.frontend.name}")
+
+        if not frontend or not frontend in manifest.frontend:
+            print(f"Error: Component {manifest.location.fqnShort} is not enabled for frontend {frontend.name}")
+            print(f"Available frontends: {[f.name for f in manifest.frontend]}")
+            print(f"To use this component, you need to:")
+            print(f"  Enable {frontend.name} in {manifest.location.fqnShort} manifest")
+            sys.exit(1)
+
+#        print(f"Frontend type: {frontend.name}")
+        frontend_class = Frontend.getFrontend(frontend)
+#        print(f"Frontend class: {frontend_class}")
+        if frontend_class is None:
+            print(f"Error: No frontend class found for {frontend.name}")
+            sys.exit(1)
+        
+
+        frontend_instance = frontend_class(manifest=manifest)
+        ret = frontend_instance.start()
+        if ret is False:
+            print(f"Error: Failed to start frontend {frontend.name}")
+            sys.exit(1)
+
+        sys.exit(0)
+
+    

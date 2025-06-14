@@ -10,4 +10,4 @@ from .__header__ import __manifest__
 from pylium.core.app import App
 
 if __name__ == "__main__":
-    App.default.run(manifest=__manifest__)
+    App.default.run(frontend=App.Frontend.CLI, manifest=__manifest__)

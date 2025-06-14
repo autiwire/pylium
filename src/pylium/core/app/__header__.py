@@ -4,7 +4,7 @@ from pylium.core.header import Header, classProperty, dlock, expose
 
 import threading
 from abc import abstractmethod
-
+from typing import Type
 
 __manifest__ : Manifest = __parent__.createChild(
     location=Manifest.Location(module=__name__, classname=None), 
@@ -43,10 +43,13 @@ class App(Header):
     instantiate it directly: `my_new_app = App()`
     """
 
+    Frontend = Manifest.Frontend
+
     __manifest__ : Manifest = __manifest__.createChild(
         location=Manifest.Location(module=__name__, classname=__qualname__),
         description="Application management and execution class",
         status=Manifest.Status.Development,
+        frontend=Manifest.Frontend.CLI,
         changelog=[
             Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 28),
                                author=__parent__.authors.rraudzus,
@@ -68,6 +71,7 @@ class App(Header):
         location=None,
         description="Test function for the App class",
         status=Manifest.Status.Development,
+        frontend=Manifest.Frontend.CLI,
         changelog=[
             Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,13), author=__parent__.authors.rraudzus,
                                  notes=["Initial release"]),
@@ -76,6 +80,23 @@ class App(Header):
     @expose
     def test(self):
         print("test")
+
+
+    @classmethod
+    @Manifest.func(__manifest__.createChild(
+        location=None,
+        description="Test2 function for the App class",
+        status=Manifest.Status.Development,
+        frontend=Manifest.Frontend.CLI,
+        changelog=[
+            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,13), author=__parent__.authors.rraudzus,
+                                 notes=["Initial release"]),
+        ]
+    ))
+    def test2(cls):
+        from .__impl__ import AppImpl 
+        return AppImpl._find_impl(specific_header_cls=cls)
+
 
     @classmethod
     def set_default_class(cls, app_class: type):
@@ -107,7 +128,7 @@ class App(Header):
         return cls._default_class()
 
     @abstractmethod
-    def run(self, manifest: "Manifest"):
+    def run(self, frontend: Type[Frontend], manifest: Manifest):
         """
         Runs the application component based on its manifest.
 

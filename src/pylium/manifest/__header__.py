@@ -26,6 +26,7 @@ __manifest__ = Manifest(
     location=Manifest.Location(module=__name__),
     description="Base class for all manifests",    
     status=Manifest.Status.Development,
+    frontend=Manifest.Frontend.CLI,
     aiAccessLevel=Manifest.AIAccessLevel.Read,
     dependencies=[],
     authors=_manifest_core_authors,
@@ -86,6 +87,7 @@ Manifest.__manifest__ = __manifest__.createChild(
     location=Manifest.Location(module=__name__, classname=Manifest.__qualname__),
     description="Base class for all manifests",    
     status=Manifest.Status.Development,
+    frontend=Manifest.Frontend.CLI,
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=_manifest_core_authors.rraudzus, 
                           notes=["Initial release"]),
@@ -96,7 +98,9 @@ Manifest.__manifest__ = __manifest__.createChild(
         Manifest.Changelog(version="0.1.3", date=Manifest.Date(2025,6,14), author=_manifest_core_authors.rraudzus,
                           notes=["Added children property for manifest hierarchy traversal",
                                 "Implemented efficient child manifest discovery",
-                                "Supports module, class, and function child manifests"])
+                                "Supports module, class, and function child manifests"]),
+        Manifest.Changelog(version="0.1.4", date=Manifest.Date(2025,6,14), author=_manifest_core_authors.rraudzus,
+                          notes=["The frontend now is set to NoFrontend by default instead of inheriting from parent"]),
     ]
 )
 

@@ -7,18 +7,34 @@ import os
 import fire
 from typing import Any
 
+def show_recursive_manifest(manifest: Manifest, indent_size = 2, level: int = 0):
+    print(f"{' ' * indent_size * level} [{level+1}] {manifest.location.fqnShort}")
+    for child in manifest.children:
+        #print(f"{' ' * indent_size * indent} CHILD: {child.location.fqnShort}")
+        if level < 5:
+            show_recursive_manifest(child, indent_size, level + 1)
+
 
 class CLIRenderer:
     """Renders a manifest hierarchy for python-fire consumption."""
     
     def __init__(self, manifest: Manifest):
-        self.manifest = manifest
+        self._manifest = manifest
     
     def render(self) -> Any:
         """Render the manifest hierarchy as a python-fire compatible object."""
         # Create a dynamic class to hold the commands
         class_attrs = {}
         
+
+        #show_recursive_manifest(self._manifest, indent_size=1)
+        #import sys
+        #sys.exit(0)
+
+        # If the manifest is not CLI enabled, return None
+        if not self._manifest.frontend & Manifest.Frontend.CLI:
+            return None
+
         #print("--------------------------------")
         #print(f"MANIFEST: {self.manifest.location.shortName}")
         #for child in self.manifest.children:            
@@ -26,17 +42,22 @@ class CLIRenderer:
         #print("")
 
         # Process all children of the manifest
-        for child in self.manifest.children:
-            #print(f"CHILD: {child.location.shortName} vs {self.manifest.location.module}")
+        for child in self._manifest.children:
+            #print(f"CHILD: {child.location.shortName} called from {self._manifest.location.module}")
             
             # Only include manifests that are exposed to CLI
             if not (child.frontend & Manifest.Frontend.CLI):
                 continue
-                
+
+            
+
+
             # Get the actual object from the manifest's location
             target_module = importlib.import_module(child.location.shortName)
             obj = None
             
+
+
             if child.location.classname:
                 # It's a class or method
                 class_obj = getattr(target_module, child.location.classname)
@@ -44,8 +65,15 @@ class CLIRenderer:
                     # It's a method
                     obj = getattr(class_obj, child.location.funcname)
                 else:
-                    # It's a class
-                    obj = class_obj
+                    # It's a class - only include if it's not an implementation class
+                    if hasattr(class_obj, '__manifest__'):
+                        if class_obj.__manifest__.frontend & Manifest.Frontend.CLI:
+                            child_renderer = CLIRenderer(class_obj.__manifest__)
+                            obj = child_renderer.render()
+                            
+                    #if not hasattr(class_obj, '__class_type__') or class_obj.__class_type__ != Header.ClassType.Impl:
+                        #obj = class_obj
+                        #pass
             else:
                 # It's a module or function
                 if child.location.funcname:
@@ -94,13 +122,6 @@ class CLIRenderer:
         DynamicCLI = type('DynamicCLI', (), class_attrs)
         return DynamicCLI()
 
-class CategorizedCommands(dict):
-    """A dictionary wrapper that carries a fire category."""
-    def __init__(self, commands, category=None):
-        super().__init__(commands)
-        if category:
-            self.__fire_category__ = category
-
 class CLIImpl(CLI):
     """
     Implementation of the recursive, lazy-loading CLI builder.
@@ -116,7 +137,7 @@ class CLIImpl(CLI):
         # This is shown by python-fire as the main help text if no commands are exposed.
         return self._target_manifest.description or ""
     
-    def start(self):
+    def start(self, **kwargs):
         """
         Builds the CLI from exposed methods and sub-modules, then runs it.
         """
@@ -128,6 +149,18 @@ class CLIImpl(CLI):
             os.environ["PAGER"] = "cat"
         
         fire.Fire(cli_target, name=self._target_manifest.location.shortName)
+
+    def stop(self):
+        """
+        Stops the CLI.
+        """
+        pass
+
+    def is_running(self):
+        """
+        Checks if the CLI is currently running.
+        """
+        return False
 
     # --- Exposed Commands ---
 

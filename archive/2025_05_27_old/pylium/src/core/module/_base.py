@@ -264,7 +264,7 @@ class _ModuleBase(ABC, metaclass=_ModuleMeta):
 
         from pylium.core.app import App
         app = App()
-        app.run(App.RunMode.CLI, cls)
+        app.runCLI(App.RunMode.CLI, cls)
 
     @classmethod
     def list_submodules(cls) -> List[typing.Type["_ModuleBase"]]:

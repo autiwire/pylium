@@ -5,6 +5,7 @@ __manifest__ : Manifest = __parent__.createChild(
     location=Manifest.Location(module=__name__, classname=None), 
     description="The core functionalities of the Pylium library.",
     status=Manifest.Status.Development,
+    frontend=Manifest.Frontend.CLI,
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 28), 
                            author=__parent__.authors.rraudzus,
