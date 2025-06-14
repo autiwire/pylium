@@ -227,7 +227,7 @@ class Manifest:
     @property
     def children(self) -> List["Manifest"]:
         """
-        Returns a list of all child manifests.
+        Returns a list of direct child manifests.
         
         The manifest hierarchy is defined by parent-child relationships:
         
@@ -260,11 +260,10 @@ class Manifest:
             └── Function
         """
     
-        #print(f"XXX children: {self.location.shortName}")
-
         childs = []
         
         try:
+            # Only look in the current module, not recursively
             module = importlib.import_module(self.location.shortName)
             for name, obj in inspect.getmembers(module):
                 child_manifest = None
@@ -279,7 +278,8 @@ class Manifest:
                     if inspect.isclass(obj) and hasattr(obj, "__manifest__"):
                         child_manifest = obj.__manifest__
 
-                if child_manifest and child_manifest.parent == self:
+                if child_manifest and child_manifest.parent == self and not child_manifest in childs:
+                    #print(f"CHILD__: {child_manifest.location.shortName}")
                     childs.append(child_manifest)
 
         except ImportError:

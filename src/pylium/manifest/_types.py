@@ -38,10 +38,13 @@ class ManifestLocation(ManifestValue):
         self.file = str(Path(spec.origin).resolve())        
         if self.funcname and self.classname:
             self.fqn = f"{self.module}.{self.classname}.{self.funcname}"
+            self.fqnShort = f"{self.shortName}.{self.classname}.{self.funcname}"
         elif self.classname:
             self.fqn = f"{self.module}.{self.classname}"
+            self.fqnShort = f"{self.shortName}.{self.classname}"
         else:
             self.fqn = self.module
+            self.fqnShort = self.shortName
 
     @property
     def shortName(self) -> str:
