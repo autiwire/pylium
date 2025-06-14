@@ -88,11 +88,15 @@ Manifest.__manifest__ = __manifest__.createChild(
     status=Manifest.Status.Development,
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=_manifest_core_authors.rraudzus, 
-                            notes=["Initial release"]),
+                          notes=["Initial release"]),
         Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,5,19), author=_manifest_core_authors.rraudzus, 
-                            notes=["Added per-class-manifest"]),
+                          notes=["Added per-class-manifest"]),
         Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,7), author=_manifest_core_authors.rraudzus, 
-                            notes=["Added shortName property to manifest class"])
+                          notes=["Added shortName property to manifest class"]),
+        Manifest.Changelog(version="0.1.3", date=Manifest.Date(2025,6,14), author=_manifest_core_authors.rraudzus,
+                          notes=["Added children property for manifest hierarchy traversal",
+                                "Implemented efficient child manifest discovery",
+                                "Supports module, class, and function child manifests"])
     ]
 )
 

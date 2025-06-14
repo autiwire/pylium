@@ -4,6 +4,8 @@ from packaging.version import Version
 
 import importlib.machinery
 import importlib.util
+import pkgutil
+import inspect
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -221,7 +223,70 @@ class Manifest:
                     return None
 
         return None
+
+    @property
+    def children(self) -> List["Manifest"]:
+        """
+        Returns a list of all child manifests.
+        
+        The manifest hierarchy is defined by parent-child relationships:
+        
+        Root Manifest (special case):
+        - Has no parent
+        - Can have any type of child
+        
+        Module Manifest:
+        - Can be parent to other modules (creating levels/hierarchy)
+        - Can have classes and functions as children
+        - Example: pylium.core manifest can be parent to pylium.core.cli manifest
+        
+        Class Manifest:
+        - Can have functions as children
+        - Example: A class in pylium.core.cli can have function manifests
+        
+        Function Manifest:
+        - Leaf node
+        - No children
+        
+        The hierarchy is:
+        Root
+        └── Module (level 1)
+            ├── Module (level 2)
+            │   ├── Class
+            │   │   └── Function
+            │   └── Function
+            ├── Class
+            │   └── Function
+            └── Function
+        """
     
+        #print(f"XXX children: {self.location.shortName}")
+
+        childs = []
+        
+        try:
+            module = importlib.import_module(self.location.shortName)
+            for name, obj in inspect.getmembers(module):
+                child_manifest = None
+                
+                # Search module for child manifests of modules, classes and functions as it is a module
+                if self.location.isModule:
+                    if ((self.location.isPackage and inspect.ismodule(obj)) or inspect.isclass(obj)) and hasattr(obj, "__manifest__"):
+                        child_manifest = obj.__manifest__
+
+                # Search for child manifests of functions in class
+                if self.location.isClass:
+                    if inspect.isclass(obj) and hasattr(obj, "__manifest__"):
+                        child_manifest = obj.__manifest__
+
+                if child_manifest and child_manifest.parent == self:
+                    childs.append(child_manifest)
+
+        except ImportError:
+            pass      
+
+        return childs
+
     @property
     def __project__(self) -> Optional["Manifest"]:
         """
