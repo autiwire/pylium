@@ -1,4 +1,10 @@
-from ._manifest import Manifest
+# Note: This is a special case in the header/impl pattern:
+# Usually __impl__.py would import from __header__.py, but here it's reversed because:
+# 1. The Manifest class is the core implementation that doesn't know about headers
+# 2. The header needs the Manifest class to define its own manifest
+# 3. This creates a clean separation where Manifest remains independent of the header concept
+# 4. Yet the manifest system still benefits from the recursive structure through __manifest__ and parent resolution
+from .__impl__ import Manifest
 
 #print("Hello, World from manifest @ manifest/__header__.py!")
 
@@ -59,7 +65,7 @@ __manifest__ = Manifest(
         Manifest.Changelog(version="0.1.13", date=Manifest.Date(2025,6,14), author=_manifest_core_authors.rraudzus,
                             notes=["Moved to header/impl design",
                                    "Added parent property to manifest"]),
-        Manifest.Changelog(version="0.1.14", date=Manifest.Date(2025,6,15), author=_manifest_core_authors.rraudzus,
+        Manifest.Changelog(version="0.1.14", date=Manifest.Date(2025,6,14), author=_manifest_core_authors.rraudzus,
                             notes=["Improved manifest parent resolution",
                                    "Added special case for manifest module parent",
                                    "Fixed circular import issues",
@@ -68,7 +74,10 @@ __manifest__ = Manifest(
                                    "Moved license to _license.py",
                                    "Moved flags to _flags.py",
                                    "Created __header__.py from __init__.py contents",
-                                   "Reduced __init__.py to minimal interface"])
+                                   "Reduced __init__.py to minimal interface"]),
+        Manifest.Changelog(version="0.1.15", date=Manifest.Date(2025,6,14), author=_manifest_core_authors.rraudzus,
+                             notes=["Added documentation for function manifest patterns",
+                                   "Added examples for both simple and implementation class function manifests"]),
     ]
 )
 

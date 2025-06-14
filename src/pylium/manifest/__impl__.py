@@ -35,10 +35,10 @@ class Manifest:
     
     Three key patterns for referencing manifests in the hierarchy:
 
-    Let there be a module called "a.b.c" with a class called "D" and
-    every module has a manifest, and every class has a manifest.
+    Let there be a module called "a.b.c" with a class called "D" and a function "f",
+    every module has a manifest, every class has a manifest, and functions can have manifests.
 
-    The manifest for a module or class is defined in the module or class header
+    The manifest for a module, class, or function is defined in the module or class header
     and called __manifest__.
 
     Now in the root "a", set __project__ = __manifest__, this marks the root
@@ -56,8 +56,25 @@ class Manifest:
     Define the class "D" with the manifest __manifest__ = __parent__.createChild(...),
     where parent is the manifest from the module "a.b.c".
 
+    For functions, use the @Manifest.func decorator to attach a manifest:
+    ```python
+    # Simple pattern for regular functions
+    @Manifest.func(Manifest(
+        description="Function manifest example"
+    ))
+    def f():
+        pass
+
+    # Explicit pattern for implementation classes
+    @Manifest.func(D.test.__manifest__)
+    def test(self):
+        print(f"Manifest: {self.__manifest__}")
+    ```
+    The function's manifest will automatically inherit from its containing class or module.
+    For implementation classes, you can explicitly reference the manifest from the interface.
+
     This is how the manifest hierarchy is created and propagated through the
-    modules and classes tree.
+    modules, classes, and functions tree.
     
     This explicit pattern ensures AI-readable code and maintains clear separation
     between structural hierarchy and authorship/policy inheritance.
