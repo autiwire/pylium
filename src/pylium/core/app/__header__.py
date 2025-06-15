@@ -1,6 +1,6 @@
 from pylium.core import __manifest__ as __parent__
 from pylium.manifest import Manifest
-from pylium.core.header import Header, classProperty, dlock, expose
+from pylium.core.header import Header, classProperty, dlock
 
 import threading
 from abc import abstractmethod
@@ -74,7 +74,6 @@ class App(Header):
                                  notes=["Initial release"]),
         ]
     ))
-    @expose
     def test(self):
         """
         Test function for the App class

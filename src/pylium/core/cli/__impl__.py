@@ -1,6 +1,5 @@
 from .__header__ import CLI, Header
 from pylium.manifest import Manifest
-from pylium.core.header import expose
 
 import importlib
 import os
@@ -8,12 +7,13 @@ import fire
 import functools
 from typing import Any
 
-def show_recursive_manifest(manifest: Manifest, indent_size = 2, level: int = 0):
+
+def _show_recursive_manifest(manifest: Manifest, indent_size = 2, level: int = 0):
     print(f"{' ' * indent_size * level} [{level+1}] {manifest.location.fqnShort}")
     for child in manifest.children:
         #print(f"{' ' * indent_size * indent} CHILD: {child.location.fqnShort}")
         if level < 5:
-            show_recursive_manifest(child, indent_size, level + 1)
+            _show_recursive_manifest(child, indent_size, level + 1)
 
 
 class CLIRenderer:
@@ -150,16 +150,9 @@ class CLIImpl(CLI):
 
     # --- Exposed Commands ---
 
-    @expose
-    def info(self):
-        """
-        Displays detailed manifest information for the current component.
-        """
-        return self._target_manifest.doc
-
-# We can now add public methods here that will be exposed by fire.
-# For example, a method to list available sub-modules:
-#
-#    def list(self):
-#        '''Lists available commands.'''
-#        # ... discovery logic ... 
+#    @expose
+#    def info(self):
+#        """
+#        Displays detailed manifest information for the current component.
+#        """
+#        return self._target_manifest.doc

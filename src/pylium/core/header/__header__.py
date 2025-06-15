@@ -103,13 +103,6 @@ def dlock(lock_attr, instance_attr):
         return wrapper
     return decorator
 
-def expose(func):
-    """
-    Decorator to mark a function as exposed.
-    """
-    func._is_exposed = True
-    return func
-
 class HeaderClassType(enum.Enum):
     """
     Enum for the type of header class.
