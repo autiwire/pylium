@@ -122,8 +122,8 @@ class Manifest:
         """
         def decorator(func: FunctionType) -> FunctionType:
             # Auto-fill location if not already set
-            print(f"DEBUG: manifest.location: {manifest.location}") # DEBUG
-            print(f"DEBUG: func: {func}") # DEBUG
+            #print(f"DEBUG: manifest.location: {manifest.location}") # DEBUG
+            #print(f"DEBUG: func: {func}") # DEBUG
             if manifest.location is None:
                 classname = None
                 if func.__qualname__:

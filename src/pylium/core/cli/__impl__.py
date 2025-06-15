@@ -5,6 +5,7 @@ from pylium.core.header import expose
 import importlib
 import os
 import fire
+import functools
 from typing import Any
 
 def show_recursive_manifest(manifest: Manifest, indent_size = 2, level: int = 0):
@@ -26,65 +27,71 @@ class CLIRenderer:
         # Create a dynamic class to hold the commands
         class_attrs = {}
         
-        print(f"[{self._manifest.objectType.name.upper()}] MANIFEST: {self._manifest.location.fqnShort}")
-        print(f"  possibleChildren: {self._manifest.objectType.possibleChildren()}")
-
-        #show_recursive_manifest(self._manifest, indent_size=1)
-        #import sys
-        #sys.exit(0)
-
         # If the manifest is not CLI enabled, return None
         if not self._manifest.frontend & Manifest.Frontend.CLI:
             return None
 
-        #print(f"  OBJTYPE: {self._manifest.objectType}")
-        #print(f"  isPackage: {self._manifest.location.isPackage}")
-        #print(f"  isModule: {self._manifest.location.isModule}")
-        #print(f"  isClass: {self._manifest.location.isClass}")
-        #print(f"  isMethod: {self._manifest.location.isMethod}")
-        #print(f"  isFunction: {self._manifest.location.isFunction}")
-
-
         for child in self._manifest.children:
             if child.objectType not in self._manifest.objectType.possibleChildren():
-                print(f"  SKIPPING CHILD: {child.location.fqnShort} ({child.objectType.name.upper()} not allowed in {self._manifest.objectType.name.upper()})")
-                print(f"  isPackage: {child.location.isPackage}")
-                print(f"  isModule: {child.location.isModule}")
-                print(f"  isClass: {child.location.isClass}")
-                print(f"  isMethod: {child.location.isMethod}")
-                print(f"  isFunction: {child.location.isFunction}")
                 continue
             
-            print(f"  CHILD: {child.location.fqnShort}")
-
             # Forbid children that are not allowed in the parent
             if not self._manifest.objectType.canContain(child.objectType):
                 # TODO: Maybe we should raise an error here?
-                print(f"  SKIPPING CHILD: {child.location.fqnShort} ({child.objectType.name.upper()} not allowed in {self._manifest.objectType.name.upper()})")
+                #print(f"  SKIPPING CHILD: {child.location.fqnShort} ({child.objectType.name.upper()} not allowed in {self._manifest.objectType.name.upper()})")
                 continue
                 
             # Filter out children that are not exposed to CLI
             if not (child.frontend & Manifest.Frontend.CLI):
-                print(f"  SKIPPING CHILD: {child.location.fqnShort} (not exposed to CLI)")
+                #print(f"  SKIPPING CHILD: {child.location.fqnShort} (not exposed to CLI)")
                 continue
 
             # Get the actual object from the manifest's location
             target_module = importlib.import_module(child.location.shortName)
             obj = None
+            category = None
 
             if child.location.isPackage or child.location.isModule or child.location.isClass:
                 # It's a package or module - recursively render it
                 child_renderer = CLIRenderer(child)
-                obj = child_renderer.render()
+                obj = child_renderer.render()                
+                
+                if child.location.isClass:
+                    category = "CLASS"
+                elif child.location.isModule:
+                    category = "SUBMODULE"
+                elif child.location.isPackage:
+                    category = "SUBMODULE"
+
+                if obj is not None:
+                    obj.__fire_category__ = category
+
             elif child.location.isMethod:
                 # It's a method - only include if it's not an implementation class
-                class_obj = getattr(target_module, child.location.classname)
-                obj = getattr(class_obj, child.location.funcname)
+                my_class = getattr(target_module, child.location.classname)
+                #print(f"  CLASS OBJ: {my_class} {type(my_class)}")
+
+                my_func = getattr(my_class, child.location.funcname)
+                #print(f"  OBJX: {my_func} {type(my_func)}")
+                
+                @functools.wraps(my_func)
+                @fire.helptext.CommandCategory("METHOD")
+                def method_wrapper(*args, **kwargs):
+                    return my_func(*args, **kwargs)
+               
+                obj = method_wrapper
+
             elif child.location.isFunction:
                 # It's a function - only include if it's not an implementation class
-                obj = getattr(target_module, child.location.funcname)
+                my_func = getattr(target_module, child.location.funcname)
+                @functools.wraps(my_func)
+                @fire.helptext.CommandCategory("FUNCTION")
+                def function_wrapper(*args, **kwargs):
+                    return my_func(*args, **kwargs)
+                
+                obj = function_wrapper
 
-            if obj is not None:
+            if obj is not None:               
                 name = child.location.localName
                 if name is not None:
                     class_attrs[name] = obj
@@ -92,97 +99,13 @@ class CLIRenderer:
                     print(f"  SKIPPING CHILD: {child.location.fqnShort} (no local name)")
                     continue
                 
-
-        #print("--------------------------------")
-        #print(f"MANIFEST: {self.manifest.location.shortName}")
-        #for child in self.manifest.children:            
-            #print(f"  CHILD: {child.location.fqnShort}")
-        #print("")
-
-        #for child in self._manifest.children:
-        #    print(f"  CHILD: {child.location.fqnShort}")
-
-        # Process all children of the manifest
-        for child in self._manifest.children:
-            continue
-            #print(f"  CHILD: {child.location.fqnShort}")
-            
-            # Only include manifests that are exposed to CLI
-            if not (child.frontend & Manifest.Frontend.CLI):
-                continue
-
-            
-
-
-            # Get the actual object from the manifest's location
-            target_module = importlib.import_module(child.location.shortName)
-            obj = None
-            
-
-
-            if child.location.classname:
-                # It's a class or method
-                class_obj = getattr(target_module, child.location.classname)
-                if child.location.funcname:
-                    # It's a method
-                    obj = getattr(class_obj, child.location.funcname)
-                else:
-                    # It's a class - only include if it's not an implementation class
-                    if hasattr(class_obj, '__manifest__'):
-                        if class_obj.__manifest__.frontend & Manifest.Frontend.CLI:
-                            child_renderer = CLIRenderer(class_obj.__manifest__)
-                            obj = child_renderer.render()
-                            
-                    #if not hasattr(class_obj, '__class_type__') or class_obj.__class_type__ != Header.ClassType.Impl:
-                        #obj = class_obj
-                        #pass
-            else:
-                # It's a module or function
-                if child.location.funcname:
-                    # It's a function
-                    obj = getattr(target_module, child.location.funcname)
-                else:
-                    # It's a module - recursively render it
-                    child_renderer = CLIRenderer(child)
-                    obj = child_renderer.render()
-            
-            if obj is not None:
-                # Set the category based on manifest type
-                category = None
-                if child.location.classname and not child.location.funcname:
-                    category = "CLASS"
-                elif child.location.funcname:
-                    category = "COMMANDS"
-                elif not child.location.classname and not child.location.funcname:
-                    category = "SUBMODULES"
-                
-                try:
-                    obj.__fire_category__ = category
-                except (AttributeError, TypeError):
-                    # If we can't set it directly, create a wrapper
-                    class CallableWrapper:
-                        def __init__(self, func, category):
-                            self._func = func
-                            self.__fire_category__ = category
-                        
-                        def __call__(self, *args, **kwargs):
-                            return self._func(*args, **kwargs)
-                        
-                        def __getattr__(self, name):
-                            return getattr(self._func, name)
-                    
-                    obj = CallableWrapper(obj, category)
-                
-                # Use the proper name from the location
-                if child.location.classname:
-                    name = child.location.classname
-                else:
-                    name = child.location.shortName.split('.')[-1]
-                class_attrs[name] = obj
-        
+       
         # Create and return a dynamic class instance
         DynamicCLI = type('DynamicCLI', (), class_attrs)
-        return DynamicCLI()
+        cli_instance = DynamicCLI()
+        cli_instance.__doc__ = self._manifest.description
+        cli_instance.__name__ = self._manifest.location.localName
+        return cli_instance
 
 class CLIImpl(CLI):
     """
@@ -210,7 +133,8 @@ class CLIImpl(CLI):
         if "PAGER" not in os.environ:
             os.environ["PAGER"] = "cat"
         
-        fire.Fire(cli_target, name=self._target_manifest.location.shortName)
+        #print(f"  CLI TARGET: {cli_target} {type(cli_target)} name: {self._target_manifest.location.fqnShort}")
+        fire.Fire(cli_target, name=self._target_manifest.location.fqnShort)
 
     def stop(self):
         """
