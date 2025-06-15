@@ -22,10 +22,12 @@ class CLIRenderer:
         self._manifest = manifest
     
     def render(self) -> Any:
-        """Render the manifest hierarchy as a python-fire compatible object."""
+        """Render the manifest hierarchy as a python-fire (modified with category support) compatible object."""
         # Create a dynamic class to hold the commands
         class_attrs = {}
         
+        print(f"[{self._manifest.objectType.name.upper()}] MANIFEST: {self._manifest.location.fqnShort}")
+        print(f"  possibleChildren: {self._manifest.objectType.possibleChildren()}")
 
         #show_recursive_manifest(self._manifest, indent_size=1)
         #import sys
@@ -35,15 +37,75 @@ class CLIRenderer:
         if not self._manifest.frontend & Manifest.Frontend.CLI:
             return None
 
+        #print(f"  OBJTYPE: {self._manifest.objectType}")
+        #print(f"  isPackage: {self._manifest.location.isPackage}")
+        #print(f"  isModule: {self._manifest.location.isModule}")
+        #print(f"  isClass: {self._manifest.location.isClass}")
+        #print(f"  isMethod: {self._manifest.location.isMethod}")
+        #print(f"  isFunction: {self._manifest.location.isFunction}")
+
+
+        for child in self._manifest.children:
+            if child.objectType not in self._manifest.objectType.possibleChildren():
+                print(f"  SKIPPING CHILD: {child.location.fqnShort} ({child.objectType.name.upper()} not allowed in {self._manifest.objectType.name.upper()})")
+                print(f"  isPackage: {child.location.isPackage}")
+                print(f"  isModule: {child.location.isModule}")
+                print(f"  isClass: {child.location.isClass}")
+                print(f"  isMethod: {child.location.isMethod}")
+                print(f"  isFunction: {child.location.isFunction}")
+                continue
+            
+            print(f"  CHILD: {child.location.fqnShort}")
+
+            # Forbid children that are not allowed in the parent
+            if not self._manifest.objectType.canContain(child.objectType):
+                # TODO: Maybe we should raise an error here?
+                print(f"  SKIPPING CHILD: {child.location.fqnShort} ({child.objectType.name.upper()} not allowed in {self._manifest.objectType.name.upper()})")
+                continue
+                
+            # Filter out children that are not exposed to CLI
+            if not (child.frontend & Manifest.Frontend.CLI):
+                print(f"  SKIPPING CHILD: {child.location.fqnShort} (not exposed to CLI)")
+                continue
+
+            # Get the actual object from the manifest's location
+            target_module = importlib.import_module(child.location.shortName)
+            obj = None
+
+            if child.location.isPackage or child.location.isModule or child.location.isClass:
+                # It's a package or module - recursively render it
+                child_renderer = CLIRenderer(child)
+                obj = child_renderer.render()
+            elif child.location.isMethod:
+                # It's a method - only include if it's not an implementation class
+                class_obj = getattr(target_module, child.location.classname)
+                obj = getattr(class_obj, child.location.funcname)
+            elif child.location.isFunction:
+                # It's a function - only include if it's not an implementation class
+                obj = getattr(target_module, child.location.funcname)
+
+            if obj is not None:
+                name = child.location.localName
+                if name is not None:
+                    class_attrs[name] = obj
+                else:
+                    print(f"  SKIPPING CHILD: {child.location.fqnShort} (no local name)")
+                    continue
+                
+
         #print("--------------------------------")
         #print(f"MANIFEST: {self.manifest.location.shortName}")
         #for child in self.manifest.children:            
             #print(f"  CHILD: {child.location.fqnShort}")
         #print("")
 
+        #for child in self._manifest.children:
+        #    print(f"  CHILD: {child.location.fqnShort}")
+
         # Process all children of the manifest
         for child in self._manifest.children:
-            #print(f"CHILD: {child.location.shortName} called from {self._manifest.location.module}")
+            continue
+            #print(f"  CHILD: {child.location.fqnShort}")
             
             # Only include manifests that are exposed to CLI
             if not (child.frontend & Manifest.Frontend.CLI):

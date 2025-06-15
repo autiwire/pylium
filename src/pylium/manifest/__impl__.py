@@ -100,6 +100,8 @@ class Manifest:
     from ._license import ManifestLicenseList as LicenseList
     from ._license import licenses as licenses
 
+    from ._enums import ManifestObjectType as ObjectType
+    from ._enums import ManifestDependencyType as DependencyType
     from ._enums import ManifestStatus as Status
     from ._enums import ManifestAccessMode as AccessMode
     from ._enums import ManifestThreadSafety as ThreadSafety
@@ -168,6 +170,25 @@ class Manifest:
 
         # Store any additional keyword arguments
         self.additionalInfo = kwargs
+        
+
+    @property
+    def objectType(self) -> ObjectType:
+        # Determine the object type based on the location
+        object_type = Manifest.ObjectType.Invalid
+        if self.location:
+            if self.location.isPackage:
+                object_type = Manifest.ObjectType.Package
+            elif self.location.isModule:
+                object_type = Manifest.ObjectType.Module
+            elif self.location.isClass:
+                object_type = Manifest.ObjectType.Class
+            elif self.location.isMethod:
+                object_type = Manifest.ObjectType.Method
+            elif self.location.isFunction:
+                object_type = Manifest.ObjectType.Function
+        return object_type
+    
 
     @property
     def parent(self) -> Optional["Manifest"]:

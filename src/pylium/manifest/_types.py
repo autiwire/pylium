@@ -2,6 +2,8 @@ import datetime
 from typing import Optional, List, Any, Generator
 import importlib.util
 from pathlib import Path
+import inspect
+
 
 class ManifestValue(object):
     """Base marker class for various manifest data structures."""
@@ -56,6 +58,22 @@ class ManifestLocation(ManifestValue):
                 return module_name[:-len(remove_str)]
         return module_name
 
+    @property
+    def localName(self) -> str:
+        """Returns the local name of the location."""
+        if self.isPackage:
+            return self.shortName.split(".")[-1]
+        elif self.isModule:
+            return self.shortName.split(".")[-1]
+        elif self.isClass:
+            return self.classname
+        elif self.isMethod:
+            return self.funcname
+        elif self.isFunction:
+            return self.funcname
+        else:
+            return None
+
     def __str__(self):
         return f"{self.fqn}"
     
@@ -70,7 +88,7 @@ class ManifestLocation(ManifestValue):
         spec = importlib.util.find_spec(self.shortName)
         #print(f"DEBUG: spec: {spec}") # DEBUG
         #print(f"DEBUG: spec.submodule_search_locations: {spec.submodule_search_locations}") # DEBUG
-        return spec is not None and spec.submodule_search_locations is not None
+        return self.isModule and spec is not None and spec.submodule_search_locations is not None and len(spec.submodule_search_locations) > 0
     
     @property
     def isModule(self) -> bool:
@@ -100,6 +118,34 @@ class ManifestLocation(ManifestValue):
         """
         return self.funcname is not None and self.classname is not None
     
+    @property
+    def isClassMethod(self) -> bool:
+        """
+        Checks if the location points to a @classmethod.
+        """
+        if not (self.classname and self.funcname):
+            return False
+        mod = importlib.import_module(self.module)
+        cls = getattr(mod, self.classname, None)
+        if cls is None:
+            return False
+        attr = inspect.getattr_static(cls, self.funcname, None)
+        return isinstance(attr, classmethod)
+
+
+    @property
+    def isStaticMethod(self) -> bool:
+        """
+        Checks if the location points to a @staticmethod.
+        """
+        if not (self.classname and self.funcname):
+            return False
+        mod = importlib.import_module(self.module)
+        cls = getattr(mod, self.classname, None)
+        if cls is None:
+            return False
+        attr = inspect.getattr_static(cls, self.funcname, None)
+        return isinstance(attr, staticmethod)
 
 class ManifestAuthor(ManifestValue):
     def __init__(self, tag: str, name: str, email: Optional[str] = None, company: Optional[str] = None, since_version: Optional[str] = None, since_date: Optional[ManifestValue.Date] = None):    

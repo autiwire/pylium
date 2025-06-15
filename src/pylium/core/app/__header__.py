@@ -25,9 +25,6 @@ __manifest__ : Manifest = __parent__.createChild(
     ]
 )
 
-def test():
-    print("test")
-
 class App(Header):
     """
     Application management and execution class
@@ -79,6 +76,9 @@ class App(Header):
     ))
     @expose
     def test(self):
+        """
+        Test function for the App class
+        """
         print("test")
 
 
@@ -94,6 +94,9 @@ class App(Header):
         ]
     ))
     def test2(cls):
+        """
+        Test2 function for the App class
+        """
         from .__impl__ import AppImpl 
         return AppImpl._find_impl(specific_header_cls=cls)
 
