@@ -76,10 +76,11 @@ class CLIRenderer:
                 
                 @functools.wraps(my_func)
                 @fire.helptext.CommandCategory("METHOD")
-                def method_wrapper(*args, **kwargs):
+                def method_wrapper(*args, **kwargs):                    
                     return my_func(*args, **kwargs)
-               
+                method_wrapper.__doc__ = child.description
                 obj = method_wrapper
+
 
             elif child.location.isFunction:
                 # It's a function - only include if it's not an implementation class
@@ -88,7 +89,7 @@ class CLIRenderer:
                 @fire.helptext.CommandCategory("FUNCTION")
                 def function_wrapper(*args, **kwargs):
                     return my_func(*args, **kwargs)
-                
+                function_wrapper.__doc__ = child.description
                 obj = function_wrapper
 
             if obj is not None:               
