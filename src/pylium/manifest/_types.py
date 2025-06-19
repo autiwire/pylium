@@ -44,6 +44,9 @@ class ManifestLocation(ManifestValue):
         elif self.classname:
             self.fqn = f"{self.module}.{self.classname}"
             self.fqnShort = f"{self.shortName}.{self.classname}"
+        elif self.funcname:
+            self.fqn = f"{self.module}.{self.funcname}"
+            self.fqnShort = f"{self.shortName}.{self.funcname}"
         else:
             self.fqn = self.module
             self.fqnShort = self.shortName
@@ -229,13 +232,20 @@ class ManifestDependency(ManifestValue):
 
     #Type = ManifestDependencyType
     
-    def __init__(self, name: str, version: str, type: Type = Type.PIP):
+    def __init__(self, name: str, version: str, type: Type = Type.PIP, source: str = None):
         self.type = type
         self.name = name
         self.version = version
+        self.source = source
 
     def __str__(self):
-        return f"{self.name} ({self.version})"
+        if self.source is not None:
+            return f"{self.name} ({self.version}) [{self.type.name}] @ {self.source}"
+        else:
+            return f"{self.name} ({self.version}) [{self.type.name}]"
     
     def __repr__(self):
-        return f"{self.name} ({self.version})"
+        if self.source is not None:
+            return f"{self.name} ({self.version}) [{self.type.name}] @ {self.source}"
+        else:
+            return f"{self.name} ({self.version}) [{self.type.name}]"

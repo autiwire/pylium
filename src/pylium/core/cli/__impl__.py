@@ -6,14 +6,7 @@ import os
 import fire
 import functools
 from typing import Any
-
-
-def _show_recursive_manifest(manifest: Manifest, indent_size = 2, level: int = 0):
-    print(f"{' ' * indent_size * level} [{level+1}] {manifest.location.fqnShort}")
-    for child in manifest.children:
-        #print(f"{' ' * indent_size * indent} CHILD: {child.location.fqnShort}")
-        if level < 5:
-            _show_recursive_manifest(child, indent_size, level + 1)
+import inspect
 
 
 class CLIRenderer:
@@ -32,9 +25,13 @@ class CLIRenderer:
             return None
 
         for child in self._manifest.children:
+            #print(f"  CHILD: {child.location.fqnShort} {child.objectType.name.upper()} {self._manifest.objectType.name.upper()}")
             if child.objectType not in self._manifest.objectType.possibleChildren():
+                print(f"  SKIPPING CHILD: {child.location.fqnShort} ({child.objectType.name.upper()} not allowed in {self._manifest.objectType.name.upper()})")
                 continue
             
+            #print(f"  ALLOWED CHILD: {child.location.fqnShort} {child.objectType.name.upper()} {self._manifest.objectType.name.upper()}")
+
             # Forbid children that are not allowed in the parent
             if not self._manifest.objectType.canContain(child.objectType):
                 # TODO: Maybe we should raise an error here?
@@ -67,29 +64,55 @@ class CLIRenderer:
                     obj.__fire_category__ = category
 
             elif child.location.isMethod:
-                # It's a method - only include if it's not an implementation class
+                # It's a method - handle different method types
                 my_class = getattr(target_module, child.location.classname)
-                #print(f"  CLASS OBJ: {my_class} {type(my_class)}")
-
                 my_func = getattr(my_class, child.location.funcname)
-                #print(f"  OBJX: {my_func} {type(my_func)}")
+                
+                #print(f"  DEBUG: {child.location.fqnShort}")
+                #print(f"    isClassMethod: {child.location.isClassMethod}")
+                #print(f"    isStaticMethod: {child.location.isStaticMethod}")
+                #print(f"    isMethod: {child.location.isMethod}")
                 
                 @functools.wraps(my_func)
                 @fire.helptext.CommandCategory("METHOD")
-                def method_wrapper(*args, **kwargs):                    
-                    return my_func(*args, **kwargs)
-                method_wrapper.__doc__ = child.description
+                def method_wrapper(*args, **kwargs):
+                    if child.location.isClassMethod:
+                        # Class method - call with class
+                        return my_func(my_class, *args, **kwargs)
+                    elif child.location.isStaticMethod:
+                        # Static method - call directly
+                        return my_func(*args, **kwargs)
+                    else:
+                        # Instance method - try to get default instance, otherwise create new
+                        try:
+                            # Try to get default instance (e.g., Crowbar.default)
+                            if hasattr(my_class, 'default'):
+                                instance = my_class.default
+                            else:
+                                # Create new instance
+                                instance = my_class()
+                            return my_func(instance, *args, **kwargs)
+                        except Exception as e:
+                            print(f"Error creating instance for {child.location.fqnShort}: {e}")
+                            # Fallback: try direct call (Fire might handle it)
+                            return my_func(*args, **kwargs)
                 obj = method_wrapper
 
 
             elif child.location.isFunction:
                 # It's a function - only include if it's not an implementation class
                 my_func = getattr(target_module, child.location.funcname)
+                
                 @functools.wraps(my_func)
                 @fire.helptext.CommandCategory("FUNCTION")
-                def function_wrapper(*args, **kwargs):
+                def function_wrapper(self, *args, **kwargs):
                     return my_func(*args, **kwargs)
-                function_wrapper.__doc__ = child.description
+                
+                # Create a signature that includes self (the wrapper is hold in a cli class so python-fire interprets it as a method)
+                sig = inspect.signature(my_func)
+                params = list(sig.parameters.values())
+                new_params = [inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD)] + params
+                function_wrapper.__signature__ = inspect.Signature(new_params)
                 obj = function_wrapper
 
             if obj is not None:               

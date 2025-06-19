@@ -9,13 +9,14 @@ except ImportError:
 
 from .manifest import Manifest
 
+
 _project_core_authors = Manifest.AuthorList([
     Manifest.__manifest__.authors.rraudzus,
 ])
 
 _project_core_maintainers = Manifest.AuthorList(_project_core_authors._authors.copy())
 
-__manifest__ : Manifest = Manifest(
+__manifest__ : Manifest = Manifest.__root__.createChild(
     location=Manifest.Location(module=__name__),
     description="Pylium project",
     status=Manifest.Status.Development,

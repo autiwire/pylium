@@ -13,7 +13,7 @@ __manifest__ : Manifest = __parent__.createChild(
         Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 5, 28), 
                            author=__parent__.authors.rraudzus,
                            notes=["Moved manifest definition to __header__.py"]),
-        Manifest.Changelog(version="0.2.0", date=Manifest.Date(2025, 6, 8),
+        Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025, 6, 8),
                            author=__parent__.authors.rraudzus,
                            notes=["Major CLI system architectural overhaul across core package",
                                   "Implemented tree-based CLI architecture replacing dynamic class building",
@@ -25,6 +25,8 @@ __manifest__ : Manifest = __parent__.createChild(
                                   "Enhanced Header class integration and discoverability in CLI tree"]),
     ]
 )
+
+
 
 
 

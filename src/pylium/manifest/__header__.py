@@ -4,9 +4,11 @@
 # 2. The header needs the Manifest class to define its own manifest
 # 3. This creates a clean separation where Manifest remains independent of the header concept
 # 4. Yet the manifest system still benefits from the recursive structure through __manifest__ and parent resolution
-from .__impl__ import Manifest
+from .__impl__ import Manifest, RootManifest
 
-#print("Hello, World from manifest @ manifest/__header__.py!")
+
+from typing import Dict, Callable
+
 
 # Core authors for use in own manifest
 _manifest_core_authors = Manifest.AuthorList([
@@ -21,9 +23,29 @@ _manifest_core_authors = Manifest.AuthorList([
 # Core maintainers, initially same as authors
 _manifest_core_maintainers = Manifest.AuthorList(_manifest_core_authors._authors.copy())
 
+# Root manifest for the manifest system
+__root__ = RootManifest(
+    location=None,
+    description="Root manifest for the manifest system",
+    status=Manifest.Status.Development,
+    frontend=Manifest.Frontend.NoFrontend,
+    aiAccessLevel=Manifest.AIAccessLevel.Read,
+    dependencies=[],
+    authors=_manifest_core_authors,
+    maintainers=_manifest_core_maintainers,
+    copyright=Manifest.Copyright(date=Manifest.Date(2025,6,16), author=_manifest_core_authors.rraudzus),
+    license=Manifest.licenses.Apache2,
+    changelog=[
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,16), author=_manifest_core_authors.rraudzus, 
+                            notes=["Initial release"]),
+    ]
+)
+
+Manifest.__root__ = __root__
+
 # Define Manifests own manifest (per-module-manifest)
 __manifest__ = Manifest(
-    location=Manifest.Location(module=__name__),
+    location=Manifest.Location(module=__name__, classname=None),
     description="Base class for all manifests",    
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
@@ -87,7 +109,8 @@ Manifest.__manifest__ = __manifest__.createChild(
     location=Manifest.Location(module=__name__, classname=Manifest.__qualname__),
     description="Base class for all manifests",    
     status=Manifest.Status.Development,
-    frontend=Manifest.Frontend.CLI,
+    frontend=Manifest.Frontend.NoFrontend,
+    aiAccessLevel=Manifest.AIAccessLevel.Read,
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=_manifest_core_authors.rraudzus, 
                           notes=["Initial release"]),
@@ -104,7 +127,40 @@ Manifest.__manifest__ = __manifest__.createChild(
     ]
 )
 
+@Manifest.func(__manifest__.createChild(
+    location=None,
+    description="Prints the manifest tree",
+    status=Manifest.Status.Development,
+    frontend=Manifest.Frontend.CLI,
+    aiAccessLevel=Manifest.AIAccessLevel.Read,
+    changelog=[
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,17), author=_manifest_core_authors.rraudzus, 
+                            notes=["Added tree function to print the manifest tree"]),
+    ]
+))
+def tree(object: str = "", simple: bool = False, indent: int = 0):
+    """Prints the manifest tree.
+    
+    The object can be a module, class, method or function.
 
+    Args:
+        object: Object to print the tree for
+        simple: If True, print only the object name
+        indent: Indentation level
+    """
 
+    from pylium.core.app import App
+    from ._cli import cli_tree
+
+    # TODO: Add a way to print the tree for a specific object     
+
+    frontend_funcs : Dict[Manifest.Frontend, Callable] = { Manifest.Frontend.NoFrontend: None,
+                                                            Manifest.Frontend.CLI: cli_tree }
+
+    frontend_type = App.default.frontend.frontendType
+    if frontend_type is not None and frontend_type in frontend_funcs.keys():
+        frontend_funcs[frontend_type](Manifest.getManifest(object), simple, indent)
+    else:
+        raise RuntimeError("No frontend function available")
 
 

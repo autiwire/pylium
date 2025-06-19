@@ -4,7 +4,7 @@ from pylium.core.header import Header, classProperty, dlock
 
 import threading
 from abc import abstractmethod
-from typing import Type
+from typing import Type, Optional
 
 __manifest__ : Manifest = __parent__.createChild(
     location=Manifest.Location(module=__name__, classname=None), 
@@ -129,6 +129,28 @@ class App(Header):
             cls._default_class = cls
         return cls._default_class()
 
+
+    @property
+    def frontend(self) -> Optional[Frontend]:
+        """Get the frontend associated with this app instance."""
+        with self._frontend_lock:
+            return self._frontend
+
+
+    @frontend.setter
+    def frontend(self, frontend: Frontend):
+        """Set the frontend associated with this app instance."""
+        with self._frontend_lock:
+            self._frontend = frontend
+
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._frontend : Optional[Manifest.Frontend] = None
+        self._frontend_lock: threading.Lock = threading.Lock()
+
+
     @abstractmethod
     def run(self, frontend: Type[Frontend], manifest: Manifest):
         """
@@ -139,5 +161,3 @@ class App(Header):
         """
         pass
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)

@@ -4,22 +4,29 @@ from pylium.core.frontend import Frontend
 from typing import Type
 import sys
 
+
 class AppImpl(App):
     """
     Implementation of the App class.
     """
     __class_type__ = Header.ClassType.Impl
 
+
     @Manifest.func(App.test.__manifest__)
     def test(self):
         print("test_impl")
         print(f"Manifest: {self.__manifest__}")
+
 
     @classmethod
     @Manifest.func(App.test2.__manifest__)
     def test2(cls):
         print("test2_impl")
         print(f"Manifest: {cls.__manifest__}")
+
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
     def run(self, frontend: Type[App.Frontend], manifest: Manifest):
@@ -48,9 +55,8 @@ class AppImpl(App):
             print(f"Error: No frontend class found for {frontend.name}")
             sys.exit(1)
         
-
-        frontend_instance = frontend_class(manifest=manifest)
-        ret = frontend_instance.start()
+        self.frontend = frontend_class(manifest=manifest)
+        ret = self.frontend.start()
         if ret is False:
             print(f"Error: Failed to start frontend {frontend.name}")
             sys.exit(1)

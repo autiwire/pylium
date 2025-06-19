@@ -6,6 +6,7 @@ import importlib.machinery
 import importlib.util
 import pkgutil
 import inspect
+import sys
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -85,6 +86,7 @@ class Manifest:
     # Manifests own manifest
     # Usually here in header classes the manifest is defined
     __manifest__: ClassVar["Manifest"] = None
+    __root__: ClassVar["Manifest"] = None
 
     from ._types import ManifestValue as Value
     from ._types import ManifestLocation as Location
@@ -122,18 +124,49 @@ class Manifest:
         """
         def decorator(func: FunctionType) -> FunctionType:
             # Auto-fill location if not already set
-            #print(f"DEBUG: manifest.location: {manifest.location}") # DEBUG
-            #print(f"DEBUG: func: {func}") # DEBUG
             if manifest.location is None:
+                # Check if function is a method by looking at the qualname
                 classname = None
-                if func.__qualname__:
+                if hasattr(func, '__qualname__') and '.' in func.__qualname__:
+                    # It's a method, get the class name
                     classname = func.__qualname__.split(".")[0]
+                    #print(f"  METHOD: {func.__qualname__} {classname}")
+                    #manifest.location = Manifest.Location(module=func.__module__, classname=classname, funcname=func.__name__)
+                #else:
+                    # It's a regular function, explicitly set classname to None
                 manifest.location = Manifest.Location(module=func.__module__, classname=classname, funcname=func.__name__)
 
             # Attach manifest
+            #print(f"  ATTACHING MANIFEST: {manifest.location.fqnShort}")
             func.__manifest__ = manifest
             return func
         return decorator
+
+
+    @classmethod
+    def getManifest(cls, path: Optional[str] = None, search_base: Optional["Manifest"] = None) -> "Manifest":
+        current_manifest = search_base if search_base else Manifest.__root__
+        if not path:
+            return current_manifest
+        
+        object_path_parts = path.split(".")
+        current_path = ""
+
+        for part in object_path_parts:
+            current_path += f".{part}" if current_path else part
+            # Search in children, not attributes
+            found = None
+            for child in current_manifest.children:
+                if (child.location.fqnShort == current_path):
+                    found = child
+                    break
+            if not found:
+                print(f"  MANIFEST NOT FOUND: {current_path}")
+                return None
+            current_manifest = found
+       
+        return current_manifest
+
 
     def __init__(self,
                 location: Location,
@@ -189,6 +222,15 @@ class Manifest:
                 object_type = Manifest.ObjectType.Function
         return object_type
     
+
+    @property
+    def isRoot(self) -> bool:
+        """
+        Checks if the location points to the root manifest.
+        """
+
+        return isinstance(self, RootManifest)
+
 
     @property
     def parent(self) -> Optional["Manifest"]:
@@ -290,15 +332,34 @@ class Manifest:
         
         try:
             # Only look in the current module, not recursively
+            #print(f"  IMPORTING: {self.location.fqnShort}")
+            #print(f"  IMPORTING: {self.location.module}")
             module = importlib.import_module(self.location.shortName)
-            #print(f"  SELF: {self.location.fqn}")
+
             if self.location.isModule and self.location.isPackage:
+                # We need to find all the __header__ and *_h submodules
+                for finder, name, ispkg in pkgutil.iter_modules(module.__path__):
+                    header : str = None
+                    if ispkg:
+                        # its a package, find the __header__ submodule  
+                        header = f"{module.__name__}.{name}.__header__"
+
+                    elif name.endswith("_h"):
+                        header = f"{module.__name__}.{name}"
+
+                    if header:
+                        try:
+                            importlib.import_module(header)
+                        except ImportError as e:
+                            pass                    
+
                 #print(f"  MODULE: {self.location.fqnShort}")
                 for name, member in inspect.getmembers(module):
                     if name.startswith("__") and name.endswith("__"):
                         continue
-                    #print(f"  NAME: {name}")
+                    #print(f"  NAME: {name} {member}")
                     if hasattr(member, "__manifest__"):
+                        
                         #print(f"  MANIFEST: {member.__manifest__.location.fqnShort}")
                         if member.__manifest__.parent == self and not member.__manifest__ in childs:
                             #print(f"ADD_MOD: {member.__manifest__.location.fqnShort}")
@@ -319,10 +380,12 @@ class Manifest:
                                 childs.append(member.__manifest__)
             
             elif self.location.isFunction:
+                #print(f"  SELF: {self.location.fqnShort} {self.objectType.name.upper()}")
                 # Function dont have childs
                 pass
 
-        except ImportError:
+        except ImportError as e:
+            print(f"  IMPORT ERROR: {self.location.fqnShort} {e}")
             pass      
 
         #print(f"  CHILDREN: {childs}")
@@ -330,7 +393,7 @@ class Manifest:
         return childs
 
     @property
-    def __project__(self) -> Optional["Manifest"]:
+    def project(self) -> Optional["Manifest"]:
         """
         The project manifest is the root manifest for the project.
         It is the module that has __project__ in its header.
@@ -502,4 +565,28 @@ class Manifest:
             aiAccessLevel=aiAccessLevel if aiAccessLevel is not None else self.aiAccessLevel
         )
     
- 
+class RootManifest(Manifest):
+    """
+    The root manifest is the root manifest for everything.
+    Create top level children from this manifest.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)        
+
+    
+    @property
+    def parent(self) -> Optional["Manifest"]:
+        return None
+    
+    @property
+    def children(self) -> List["Manifest"]:
+        # We need to search for __project__ in all available modules
+        # and return the manifest for the module that has __project__
+        
+        _children = []
+        for module in sys.modules.values():
+            # We only accept top level packages here to be listed under the root manifest
+            if hasattr(module, "__project__") and not "." in module.__name__:
+                _children.append(module.__project__)
+        return _children
