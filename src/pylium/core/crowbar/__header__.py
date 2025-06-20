@@ -13,16 +13,12 @@ __manifest__ : Manifest = __parent__.createChild(
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     dependencies=[
-        Manifest.Dependency(name="pip", version="25.3.0", type=Manifest.Dependency.Type.PIP,
-                          category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="setuptools", version="69.0.3", type=Manifest.Dependency.Type.PIP,
-                          category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="wheel", version="0.42.0", type=Manifest.Dependency.Type.PIP,
-                          category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.Dependency.Type.PIP,
-                          category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="tomli-w", version="1.0.0", type=Manifest.Dependency.Type.PIP,
-                          category=Manifest.Dependency.Category.BUILD)
+        Manifest.Dependency(name="pip", version="25.3.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="setuptools", version="69.0.3", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="setuptools-scm", version="8.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="wheel", version="0.42.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="tomli-w", version="1.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD)
     ],
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16), 
@@ -315,33 +311,42 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 20),
                          author=__parent__.authors.rraudzus,
                          notes=["Added pyproject_update function to update dependencies in pyproject.toml",
-                               "Automatically uses highest version when conflicts exist"])
+                               "Automatically uses highest version when conflicts exist"]),
+        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 6, 20),
+                         author=__parent__.authors.rraudzus,
+                         notes=["Added --dry-run flag to preview changes without writing"])
     ]
 ))
-def pyproject_update(self, path: str = "pyproject.toml"):
+def pyproject_update(path: str = "pyproject.toml", dry_run: bool = False):
     """Update dependencies in pyproject.toml based on manifest dependencies.
     
     Args:
         path: Path to the pyproject.toml file (default: pyproject.toml in current directory)
+        dry_run: If True, show what would change without modifying the file
     """
     import tomllib
     import tomli_w
     
     # Get all dependencies
-    dependencies = self.getDependencies("", recursive=True)
+    dependencies = Crowbar.getDependencies("", recursive=True)
     
     # Track highest version of each package
-    pkg_versions = {}  # name -> {version, source}
+    runtime_deps = {}  # name -> {version, source}
+    build_deps = {}   # name -> {version, source}
+    
     for module_deps in dependencies.values():
         for dep in module_deps:
             if dep.type.name == "PIP":
-                current = pkg_versions.get(dep.name, {"version": "0.0.0", "source": None})
+                # Select target dict based on category
+                target_dict = build_deps if dep.category.name == "BUILD" else runtime_deps
+                current = target_dict.get(dep.name, {"version": "0.0.0", "source": None})
+                
                 if hasattr(dep, 'source') and dep.source:
                     # Always keep source dependencies
-                    pkg_versions[dep.name] = {"version": dep.version, "source": dep.source}
+                    target_dict[dep.name] = {"version": dep.version, "source": dep.source}
                 elif not current["source"]:  # Don't override source deps with version deps
                     if packaging.version.parse(dep.version) > packaging.version.parse(current["version"]):
-                        pkg_versions[dep.name] = {"version": dep.version, "source": None}
+                        target_dict[dep.name] = {"version": dep.version, "source": None}
     
     try:
         with open(path, "rb") as f:
@@ -355,40 +360,100 @@ def pyproject_update(self, path: str = "pyproject.toml"):
     
     # Update dependencies
     project = data.setdefault("project", {})
-    deps = project.setdefault("dependencies", [])
+    runtime_list = project.setdefault("dependencies", [])
+    build_list = project.setdefault("build-dependencies", [])
     
     # Convert existing deps to dict for easier updating
-    existing_deps = {}
-    for dep in deps:
+    existing_runtime = {}
+    for dep in runtime_list:
         if isinstance(dep, str):
             name = dep.split("==")[0].split(">=")[0].split("<=")[0].strip()
-            existing_deps[name] = dep
+            existing_runtime[name] = dep
+            
+    existing_build = {}
+    for dep in build_list:
+        if isinstance(dep, str):
+            name = dep.split("==")[0].split(">=")[0].split("<=")[0].strip()
+            existing_build[name] = dep
     
     # Update dependencies
-    new_deps = []
-    for name, info in sorted(pkg_versions.items()):
+    new_runtime = []
+    for name, info in sorted(runtime_deps.items()):
         if info["source"]:
-            new_deps.append(f"{name} @ {info['source']}")
+            new_runtime.append(f"{name} @ {info['source']}")
         else:
-            new_deps.append(f"{name}=={info['version']}")
+            new_runtime.append(f"{name}=={info['version']}")
+            
+    new_build = []
+    for name, info in sorted(build_deps.items()):
+        if info["source"]:
+            new_build.append(f"{name} @ {info['source']}")
+        else:
+            new_build.append(f"{name}=={info['version']}")
     
-    project["dependencies"] = new_deps
+    # Show what would change
+    runtime_added = set(new_runtime) - set(existing_runtime.values())
+    runtime_removed = set(existing_runtime.values()) - set(new_runtime)
+    build_added = set(new_build) - set(existing_build.values())
+    build_removed = set(existing_build.values()) - set(new_build)
     
+    if dry_run:
+        print(f"🔍 DRY RUN: Changes that would be made to {path}:")
+        
+        print(f"\n⚡ Runtime Dependencies ({len(new_runtime)} total):")
+        for dep in sorted(new_runtime):
+            print(f"  • {dep}")
+            
+        print(f"\n🔧 Build Dependencies ({len(new_build)} total):")
+        for dep in sorted(new_build):
+            print(f"  • {dep}")
+        
+        if runtime_added:
+            print("\n✨ Would add to runtime dependencies:")
+            for dep in sorted(runtime_added):
+                print(f"  + {dep}")
+        if build_added:
+            print("\n✨ Would add to build dependencies:")
+            for dep in sorted(build_added):
+                print(f"  + {dep}")
+                
+        if runtime_removed:
+            print("\n🗑️ Would remove from runtime dependencies:")
+            for dep in sorted(runtime_removed):
+                print(f"  - {dep}")
+        if build_removed:
+            print("\n🗑️ Would remove from build dependencies:")
+            for dep in sorted(build_removed):
+                print(f"  - {dep}")
+                
+        if not (runtime_added or runtime_removed or build_added or build_removed):
+            print("\n✨ No changes needed!")
+        return
+    
+    # Actually update the file
     try:
+        project["dependencies"] = new_runtime
+        project["build-dependencies"] = new_build
         with open(path, "wb") as f:
             tomli_w.dump(data, f)
-        print(f"✅ Updated {path} with {len(new_deps)} dependencies")
+        print(f"✅ Updated {path} with {len(new_runtime)} runtime and {len(new_build)} build dependencies")
         
-        # Show what changed
-        added = set(new_deps) - set(existing_deps.values())
-        removed = set(existing_deps.values()) - set(new_deps)
-        if added:
-            print("\n📦 Added dependencies:")
-            for dep in sorted(added):
+        if runtime_added:
+            print("\n⚡ Added runtime dependencies:")
+            for dep in sorted(runtime_added):
                 print(f"  + {dep}")
-        if removed:
-            print("\n🗑️ Removed dependencies:")
-            for dep in sorted(removed):
+        if build_added:
+            print("\n🔧 Added build dependencies:")
+            for dep in sorted(build_added):
+                print(f"  + {dep}")
+                
+        if runtime_removed:
+            print("\n🗑️ Removed runtime dependencies:")
+            for dep in sorted(runtime_removed):
+                print(f"  - {dep}")
+        if build_removed:
+            print("\n🗑️ Removed build dependencies:")
+            for dep in sorted(build_removed):
                 print(f"  - {dep}")
                 
     except Exception as e:

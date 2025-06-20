@@ -1,28 +1,29 @@
 [build-system]
-requires = ["setuptools>=42", "wheel", "setuptools_scm>=8.0.0", "virtualenv>=20.0.0"]
+requires = [
+    "setuptools>=42",
+    "wheel>=0.39.0",
+    "setuptools_scm>=8.0.0",
+    "virtualenv>=20.0.0"
+]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pylium"
 dynamic = ["version"]
 readme = "README.md"
+requires-python = ">=3.11"
 dependencies = [
-    "virtualenv>=20.0.0",
-    "wheel>=0.39.0",
-    "setuptools>=42.0.0",
-    "setuptools_scm>=8.0.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
-    "pytest>=7.0.0",
     "fire @ git+https://github.com/Verlusti/python-fire.git"
 ]
-requires-python = ">=3.11"
 
-#[project.optional-dependencies]
-#dev = [
-#    "pip-tools>=7.0.0",
-#    "virtualenv>=20.0.0",
-#]
+[project.optional-dependencies]
+dev = [
+    "pip-tools>=7.0.0",
+    "virtualenv>=20.0.0",
+    "pytest>=7.0.0"
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

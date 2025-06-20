@@ -41,7 +41,7 @@ class CLI(Frontend):
         description="The core CLI building component for Pylium.",
         status=Manifest.Status.Development,
         frontend=Manifest.Frontend.CLI,
-        dependencies=[ Manifest.Dependency(name="fastapi", version="0.133.7", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.RUNTIME) ],
+        dependencies=[],
         changelog=[
             Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,8), author=__parent__.authors.rraudzus,
                                notes=["Redesigned CLI class with tree-based architecture",
