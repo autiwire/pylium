@@ -11,9 +11,9 @@ __manifest__ : Manifest = __parent__.createChild(
     description="Installer and package management system for Pylium",
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
-    dependencies=[ Manifest.Dependency(name="pip", version="25.3.0", type=Manifest.DependencyType.PIP, priority=Manifest.Dependency.Priority.SYSTEM),
-                   Manifest.Dependency(name="setuptools", version="69.0.3", type=Manifest.DependencyType.PIP, priority=Manifest.Dependency.Priority.SYSTEM),
-                   Manifest.Dependency(name="wheel", version="0.42.0", type=Manifest.DependencyType.PIP, priority=Manifest.Dependency.Priority.SYSTEM),
+    dependencies=[ Manifest.Dependency(name="pip", version="25.3.0", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD),
+                   Manifest.Dependency(name="setuptools", version="69.0.3", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD),
+                   Manifest.Dependency(name="wheel", version="0.42.0", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD),
                     ],
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16), 
