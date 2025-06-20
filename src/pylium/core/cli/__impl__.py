@@ -21,13 +21,34 @@ class CLIRenderer:
         @functools.wraps(func)
         @fire.helptext.CommandCategory("FUNCTION")
         def function_wrapper(self, *args, **kwargs):
-            return func(*args, **kwargs)
+            # If it's an instance method, we need to handle self
+            sig = inspect.signature(func)
+            params = list(sig.parameters.values())
+            if params and params[0].name == 'self':
+                # It's an instance method, try to get default instance
+                try:
+                    if hasattr(func.__self__.__class__, 'default'):
+                        instance = func.__self__.__class__.default
+                    else:
+                        instance = func.__self__.__class__()
+                    return func(instance, *args, **kwargs)
+                except Exception as e:
+                    print(f"Error creating instance: {e}")
+                    return func(*args, **kwargs)
+            else:
+                # Regular function, just call it
+                return func(*args, **kwargs)
         
-        # Create a signature that includes self (the wrapper is held in a cli class)
+        # Create a signature without duplicating self
         sig = inspect.signature(func)
         params = list(sig.parameters.values())
-        new_params = [inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD)] + params
-        function_wrapper.__signature__ = inspect.Signature(new_params)
+        if params and params[0].name == 'self':
+            # Already has self, use as is
+            function_wrapper.__signature__ = sig
+        else:
+            # Add self parameter
+            new_params = [inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD)] + params
+            function_wrapper.__signature__ = inspect.Signature(new_params)
         return function_wrapper
     
     def render(self) -> Any:
