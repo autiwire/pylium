@@ -49,6 +49,11 @@ class CLI(Frontend):
                                       "Added support for recursive navigation with consistent behavior",
                                       "Enhanced manifest discovery for proper header resolution",
                                       "CLI now serves as frontend-agnostic command tree builder"]),
+            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,20), author=__parent__.authors.rraudzus,
+                               notes=["Fixed critical bug in function wrapping using closure factory pattern",
+                                      "Added make_function_wrapper to properly bind standalone functions",
+                                      "Improved stability of CLI command routing",
+                                      "Enhanced debugging capabilities with cleaner wrapper structure"])
         ]
     )
 

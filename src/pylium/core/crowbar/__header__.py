@@ -35,14 +35,19 @@ class Crowbar(Header):
 
     __manifest__ : Manifest = __manifest__.createChild(
         location=Manifest.Location(module=__name__, classname=__qualname__),
-        description="Installer and package management class",
+        description="The Crowbar installer and package management system.",
         status=Manifest.Status.Development,
-        frontend=Manifest.Frontend.NoFrontend,
+        frontend=Manifest.Frontend.CLI,
         dependencies=[],
         changelog=[
-            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16),
-                               author=__parent__.authors.rraudzus,
-                               notes=["Initial definition of pylium.crowbar.Crowbar class manifest."]),
+            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,16), author=__parent__.authors.rraudzus,
+                               notes=["Initial implementation of the Crowbar installer",
+                                      "Added basic dependency management",
+                                      "Support for pip and system dependencies"]),
+            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,20), author=__parent__.authors.rraudzus,
+                               notes=["Fixed list_dependencies function routing",
+                                      "Improved CLI integration with proper function binding",
+                                      "Enhanced stability and reliability of dependency listing"])
         ]
     )
 

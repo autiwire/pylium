@@ -40,6 +40,11 @@ class Frontend(Header):
                                notes=["Initial implementation of Frontend base class",
                                       "Defined abstract interface for frontend implementations",
                                       "Established foundation for multi-frontend architecture"]),
+            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 6, 20),
+                               author=__parent__.authors.rraudzus,
+                               notes=["Cleaned up debug output for better readability",
+                                      "Improved frontend registration logging",
+                                      "Enhanced code clarity and maintainability"])
         ]
     )
 
