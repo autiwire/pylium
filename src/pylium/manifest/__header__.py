@@ -50,7 +50,7 @@ __manifest__ = Manifest(
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     aiAccessLevel=Manifest.AIAccessLevel.Read,
-    dependencies=[ Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD) ],
+    dependencies=[ Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.RUNTIME) ],
     authors=_manifest_core_authors,
     maintainers=_manifest_core_maintainers,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=_manifest_core_authors.rraudzus),
@@ -125,7 +125,8 @@ Manifest.__manifest__ = __manifest__.createChild(
         Manifest.Changelog(version="0.1.4", date=Manifest.Date(2025,6,14), author=_manifest_core_authors.rraudzus,
                           notes=["The frontend now is set to NoFrontend by default instead of inheriting from parent"]),
         Manifest.Changelog(version="0.1.5", date=Manifest.Date(2025,6,20), author=_manifest_core_authors.rraudzus,
-                          notes=["Added dependency category to manifest"]),
+                          notes=["Added dependency category to manifest",
+                                 "Added dependency direction to manifest"]),
     ]
 )
 

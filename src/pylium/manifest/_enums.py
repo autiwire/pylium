@@ -106,6 +106,48 @@ class ManifestDependencyCategory(Enum):
         }[self]
 
 
+class ManifestDependencyDirection(Enum):
+    """
+    The direction of the dependency.
+    """
+        
+    MINIMUM = "minimum"
+    EXACT = "exact"
+    MAXIMUM = "maximum"
+    
+    def __str__(self):
+        return self.value
+    
+    def __repr__(self):
+        return self.value
+    
+    def __hash__(self) -> int:
+        return hash(self.value)
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestDependencyDirection):
+            return False
+        return self.value == other.value
+    
+    def __ne__(self, other: Any) -> bool:
+        return not self.__eq__(other)
+    
+    @property
+    def description(self) -> str:
+        return {
+            ManifestDependencyDirection.MINIMUM: "Minimum version of the dependency (default)",
+            ManifestDependencyDirection.EXACT: "Exact version of the dependency",
+            ManifestDependencyDirection.MAXIMUM: "Maximum version of the dependency"
+        }[self]
+    
+    @property
+    def sign(self) -> str:
+        return {
+            ManifestDependencyDirection.MINIMUM: ">=",
+            ManifestDependencyDirection.EXACT: "==",
+            ManifestDependencyDirection.MAXIMUM: "<="
+        }[self]
+
 class ManifestStatus(Enum):
     Development = "Development"
     Production = "Production"

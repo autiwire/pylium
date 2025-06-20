@@ -17,13 +17,16 @@ __manifest__ : Manifest = __parent__.createChild(
         Manifest.Dependency(name="setuptools", version="69.0.3", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
         Manifest.Dependency(name="setuptools-scm", version="8.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
         Manifest.Dependency(name="wheel", version="0.42.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="tomli-w", version="1.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD)
+        Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME),
+        Manifest.Dependency(name="tomli-w", version="1.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME)
     ],
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16), 
                          author=__parent__.authors.rraudzus,
-                         notes=["Initial definition of pylium.crowbar package manifest."])
+                         notes=["Initial definition of pylium.crowbar package manifest."]),
+        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 6, 20),
+                         author=__parent__.authors.rraudzus,
+                         notes=["Moved packaging and tomli-w to RUNTIME category as they are needed for runtime operations."])
     ]
 )
 
@@ -144,6 +147,54 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
     if simple:
         # Simple requirements.txt format
         all_deps = {}  # Dict to track highest version of each package
+        warnings = []  # Track dependency conflicts
+        
+        # First pass: collect all versions of each package
+        dep_versions = {}  # name -> [(version, direction, module)]
+        for module, module_deps in dependencies.items():
+            for dep in module_deps:
+                if dep.type.name == "PIP":
+                    dep_versions.setdefault(dep.name, []).append((dep.version, dep.direction, module))
+        
+        # Check for conflicts
+        for pkg_name, versions in dep_versions.items():
+            if len(versions) > 1:
+                exact_versions = [(v, m) for v, d, m in versions if d == Manifest.Dependency.Direction.EXACT]
+                min_versions = [(v, m) for v, d, m in versions if d == Manifest.Dependency.Direction.MINIMUM]
+                max_versions = [(v, m) for v, d, m in versions if d == Manifest.Dependency.Direction.MAXIMUM]
+                
+                # Case 1: Multiple different EXACT versions - no installable version possible
+                if len(exact_versions) > 1:
+                    # Only warn if the versions are actually different
+                    unique_versions = set(v for v, _ in exact_versions)
+                    if len(unique_versions) > 1:
+                        versions_str = ", ".join([f"{v} in {m}" for v, m in exact_versions])
+                        warnings.append(f"# WARNING: Multiple different EXACT versions specified for {pkg_name}: {versions_str}")
+                
+                # Case 2: Single EXACT version with incompatible constraints
+                if len(exact_versions) == 1:
+                    exact_ver, exact_module = exact_versions[0]
+                    exact_version = packaging.version.parse(exact_ver)
+                    
+                    # Check if EXACT version violates any MIN/MAX constraints
+                    for min_ver, min_module in min_versions:
+                        min_version = packaging.version.parse(min_ver)
+                        if exact_version < min_version:
+                            warnings.append(f"# WARNING: {pkg_name}: EXACT version {exact_ver} in {exact_module} is lower than MINIMUM version {min_ver} in {min_module}")
+                    
+                    for max_ver, max_module in max_versions:
+                        max_version = packaging.version.parse(max_ver)
+                        if exact_version > max_version:
+                            warnings.append(f"# WARNING: {pkg_name}: EXACT version {exact_ver} in {exact_module} is higher than MAXIMUM version {max_ver} in {max_module}")
+                
+                # Case 3: MIN/MAX constraints with no possible version
+                if min_versions and max_versions:
+                    highest_min = max([(packaging.version.parse(v), m) for v, m in min_versions], key=lambda x: x[0])
+                    lowest_max = min([(packaging.version.parse(v), m) for v, m in max_versions], key=lambda x: x[0])
+                    
+                    if highest_min[0] > lowest_max[0]:
+                        warnings.append(f"# WARNING: {pkg_name}: No valid versions exist between MINIMUM {highest_min[0]} in {highest_min[1]} and MAXIMUM {lowest_max[0]} in {lowest_max[1]}")
+
         for module_deps in dependencies.values():
             for dep in module_deps:
                 if dep.type.name == "PIP":  # Only PIP dependencies for requirements.txt
@@ -151,13 +202,61 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
                     if hasattr(dep, 'source') and dep.source:
                         all_deps[dep.name] = f"{dep.name} @ {dep.source}"
                     else:
-                        # For version dependencies, keep highest version
-                        current = all_deps.get(dep.name, f"{dep.name}==0.0.0")
-                        if "==" in current:  # Only compare version deps
-                            current_ver = current.split("==")[1]
-                            if packaging.version.parse(dep.version) > packaging.version.parse(current_ver):
-                                all_deps[dep.name] = f"{dep.name}=={dep.version}"
+                        # For version dependencies, check direction and version
+                        key = f"{dep.name}"
+                        current = all_deps.get(key, None)
                         
+                        if current is None:
+                            # First occurrence of this package
+                            all_deps[key] = f"{dep.name}{dep.direction.sign}{dep.version}"
+                        else:
+                            # Compare versions based on direction
+                            current_op = None
+                            current_ver = None
+                            # Extract current version and direction from the string
+                            for direction in Manifest.Dependency.Direction:
+                                if direction.sign in current:
+                                    current_op = direction
+                                    current_ver = current.split(direction.sign)[1]
+                                    break
+                            
+                            if current_op == Manifest.Dependency.Direction.EXACT:
+                                # Keep exact version unless new version is also exact
+                                if dep.direction == Manifest.Dependency.Direction.EXACT:
+                                    # Take the newer exact version
+                                    if packaging.version.parse(dep.version) > packaging.version.parse(current_ver):
+                                        all_deps[key] = f"{dep.name}{dep.direction.sign}{dep.version}"
+                            elif dep.direction == Manifest.Dependency.Direction.EXACT:
+                                # New exact version overrides any non-exact
+                                all_deps[key] = f"{dep.name}{dep.direction.sign}{dep.version}"
+                            elif current_op == Manifest.Dependency.Direction.MINIMUM:
+                                if dep.direction == Manifest.Dependency.Direction.MINIMUM:
+                                    # Take the higher minimum version
+                                    if packaging.version.parse(dep.version) > packaging.version.parse(current_ver):
+                                        all_deps[key] = f"{dep.name}{dep.direction.sign}{dep.version}"
+                                elif dep.direction == Manifest.Dependency.Direction.MAXIMUM:
+                                    # We have both min and max, could add range support in future
+                                    pass
+                            elif current_op == Manifest.Dependency.Direction.MAXIMUM:
+                                if dep.direction == Manifest.Dependency.Direction.MAXIMUM:
+                                    # Take the lower maximum version
+                                    if packaging.version.parse(dep.version) < packaging.version.parse(current_ver):
+                                        all_deps[key] = f"{dep.name}{dep.direction.sign}{dep.version}"
+                                elif dep.direction == Manifest.Dependency.Direction.MINIMUM:
+                                    # We have both min and max, could add range support in future
+                                    pass
+                            else:
+                                # Fallback - take the new version
+                                all_deps[key] = f"{dep.name}{dep.direction.sign}{dep.version}"
+        
+        # Print warnings first as comments
+        if warnings:
+            print("# DEPENDENCY WARNINGS")
+            for warning in warnings:
+                print(warning)
+            print()
+        
+        # Print actual requirements
         for dep in sorted(all_deps.values()):
             print(dep)
         return

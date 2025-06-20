@@ -230,22 +230,24 @@ class ManifestChangelog(ManifestValue):
 class ManifestDependency(ManifestValue):
     from ._enums import ManifestDependencyType as Type
     from ._enums import ManifestDependencyCategory as Category
+    from ._enums import ManifestDependencyDirection as Direction
    
-    def __init__(self, name: str, version: str, type: Type = Type.PIP, source: str = None, category: Category = Category.AUTOMATIC):
+    def __init__(self, name: str, version: str, type: Type = Type.PIP, source: str = None, category: Category = Category.AUTOMATIC, direction: Direction = Direction.MINIMUM):
         self.type = type
         self.name = name
         self.version = version
         self.source = source
         self.category = category
+        self.direction = direction
 
     def __str__(self):
         if self.source is not None:
-            return f"{self.name} ({self.version}) [{self.type.name}] @ {self.source} [{self.category}]"
+            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] @ {self.source} [{self.category}]"
         else:
-            return f"{self.name} ({self.version}) [{self.type.name}] [{self.category}]"
+            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] [{self.category}]"
     
     def __repr__(self):
         if self.source is not None:
-            return f"{self.name} ({self.version}) [{self.type.name}] @ {self.source} [{self.category}]"
+            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] @ {self.source} [{self.category}]"
         else:
-            return f"{self.name} ({self.version}) [{self.type.name}] [{self.category}]"
+            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] [{self.category}]"
