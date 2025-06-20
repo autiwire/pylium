@@ -5,6 +5,7 @@ from pylium.core.header import Header, classProperty, dlock
 import threading
 from abc import abstractmethod
 from typing import Type, Optional, Dict, List
+import packaging.version
 
 __manifest__ : Manifest = __parent__.createChild(
     location=Manifest.Location(module=__name__, classname=None), 
@@ -14,7 +15,8 @@ __manifest__ : Manifest = __parent__.createChild(
     dependencies=[ Manifest.Dependency(name="pip", version="25.3.0", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD),
                    Manifest.Dependency(name="setuptools", version="69.0.3", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD),
                    Manifest.Dependency(name="wheel", version="0.42.0", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD),
-                    ],
+                   Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD)
+    ],
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16), 
                            author=__parent__.authors.rraudzus,
@@ -138,24 +140,22 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
     
     if simple:
         # Simple requirements.txt format
-        all_deps = []
+        all_deps = {}  # Dict to track highest version of each package
         for module_deps in dependencies.values():
             for dep in module_deps:
                 if dep.type.name == "PIP":  # Only PIP dependencies for requirements.txt
+                    # For source dependencies, always keep the source version
                     if hasattr(dep, 'source') and dep.source:
-                        all_deps.append(f"{dep.name} @ {dep.source}")
+                        all_deps[dep.name] = f"{dep.name} @ {dep.source}"
                     else:
-                        all_deps.append(f"{dep.name}=={dep.version}")
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_deps = []
-        for dep in all_deps:
-            if dep not in seen:
-                unique_deps.append(dep)
-                seen.add(dep)
-        
-        for dep in sorted(unique_deps):
+                        # For version dependencies, keep highest version
+                        current = all_deps.get(dep.name, f"{dep.name}==0.0.0")
+                        if "==" in current:  # Only compare version deps
+                            current_ver = current.split("==")[1]
+                            if packaging.version.parse(dep.version) > packaging.version.parse(current_ver):
+                                all_deps[dep.name] = f"{dep.name}=={dep.version}"
+                        
+        for dep in sorted(all_deps.values()):
             print(dep)
         return
     
@@ -184,13 +184,29 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
             print("💡 Try removing filters to see all dependencies.")
         return
     
+    # Track version differences
+    version_conflicts = {}  # name -> {version -> [modules]}
+    for module, deps in dependencies.items():
+        for dep in deps:
+            if dep.type.name == "PIP" and not (hasattr(dep, 'source') and dep.source):
+                version_conflicts.setdefault(dep.name, {}).setdefault(dep.version, []).append(module)
+    
+    # Find highest version for each package
+    highest_versions = {}
+    for pkg, versions in version_conflicts.items():
+        if len(versions) > 1:  # Only track actual conflicts
+            highest_versions[pkg] = max(versions.keys(), key=packaging.version.parse)
+    
     # Statistics
     total_deps = sum(len(deps) for deps in dependencies.values())
     total_modules = len(dependencies)
+    conflict_count = sum(1 for versions in version_conflicts.values() if len(versions) > 1)
     
     print(f"📊 STATISTICS:")
     print(f"   • Total Dependencies: {total_deps}")
     print(f"   • Modules with Dependencies: {total_modules}")
+    if conflict_count > 0:
+        print(f"   • Version Conflicts: {conflict_count} 🚨")
     
     # Count by category
     category_counts = {}
@@ -257,7 +273,30 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
             if hasattr(dep, 'source') and dep.source:
                 dep_str += f" @ {dep.source}"
             
+            # Add version conflict indicator
+            if dep.type.name == "PIP" and not (hasattr(dep, 'source') and dep.source):
+                if dep.name in highest_versions:
+                    highest = highest_versions[dep.name]
+                    if dep.version == highest:
+                        dep_str += " ★"  # Highest version
+                    else:
+                        # Show how many versions lower this is
+                        ver_diff = len(version_conflicts[dep.name])
+                        dep_str += f" ⚠️[-{ver_diff-1}]"  # Lower version with difference count
+            
             print(f"{dep_prefix}{category_emoji} {type_emoji} {dep_str}")
     
+    # Show version conflict details if any exist
+    if conflict_count > 0:
+        print("\n⚠️ VERSION CONFLICTS:")
+        for pkg, versions in sorted(version_conflicts.items()):
+            if len(versions) > 1:
+                print(f"\n  📦 {pkg}:")
+                highest = highest_versions[pkg]
+                for version, modules in sorted(versions.items(), key=lambda x: packaging.version.parse(x[0]), reverse=True):
+                    indicator = "(highest)" if version == highest else ""
+                    print(f"    {version} {'★' if version == highest else '⚠️'} {indicator}")
+                    for module in sorted(modules):
+                        print(f"      • {module}")
 
 
