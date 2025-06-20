@@ -12,15 +12,22 @@ __manifest__ : Manifest = __parent__.createChild(
     description="Installer and package management system for Pylium",
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
-    dependencies=[ Manifest.Dependency(name="pip", version="25.3.0", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD),
-                   Manifest.Dependency(name="setuptools", version="69.0.3", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD),
-                   Manifest.Dependency(name="wheel", version="0.42.0", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD),
-                   Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.BUILD)
+    dependencies=[
+        Manifest.Dependency(name="pip", version="25.3.0", type=Manifest.Dependency.Type.PIP,
+                          category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="setuptools", version="69.0.3", type=Manifest.Dependency.Type.PIP,
+                          category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="wheel", version="0.42.0", type=Manifest.Dependency.Type.PIP,
+                          category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.Dependency.Type.PIP,
+                          category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="tomli-w", version="1.0.0", type=Manifest.Dependency.Type.PIP,
+                          category=Manifest.Dependency.Category.BUILD)
     ],
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16), 
-                           author=__parent__.authors.rraudzus,
-                           notes=["Initial definition of pylium.crowbar package manifest."]),
+                         author=__parent__.authors.rraudzus,
+                         notes=["Initial definition of pylium.crowbar package manifest."])
     ]
 )
 
@@ -298,5 +305,94 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
                     print(f"    {version} {'★' if version == highest else '⚠️'} {indicator}")
                     for module in sorted(modules):
                         print(f"      • {module}")
+
+@Manifest.func(__manifest__.createChild(
+    location=None,
+    description="Update dependencies in pyproject.toml based on manifest dependencies",
+    status=Manifest.Status.Development,
+    frontend=Manifest.Frontend.CLI,
+    changelog=[
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 20),
+                         author=__parent__.authors.rraudzus,
+                         notes=["Added pyproject_update function to update dependencies in pyproject.toml",
+                               "Automatically uses highest version when conflicts exist"])
+    ]
+))
+def pyproject_update(self, path: str = "pyproject.toml"):
+    """Update dependencies in pyproject.toml based on manifest dependencies.
+    
+    Args:
+        path: Path to the pyproject.toml file (default: pyproject.toml in current directory)
+    """
+    import tomllib
+    import tomli_w
+    
+    # Get all dependencies
+    dependencies = self.getDependencies("", recursive=True)
+    
+    # Track highest version of each package
+    pkg_versions = {}  # name -> {version, source}
+    for module_deps in dependencies.values():
+        for dep in module_deps:
+            if dep.type.name == "PIP":
+                current = pkg_versions.get(dep.name, {"version": "0.0.0", "source": None})
+                if hasattr(dep, 'source') and dep.source:
+                    # Always keep source dependencies
+                    pkg_versions[dep.name] = {"version": dep.version, "source": dep.source}
+                elif not current["source"]:  # Don't override source deps with version deps
+                    if packaging.version.parse(dep.version) > packaging.version.parse(current["version"]):
+                        pkg_versions[dep.name] = {"version": dep.version, "source": None}
+    
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+    except FileNotFoundError:
+        print(f"❌ {path} not found!")
+        return
+    except Exception as e:
+        print(f"❌ Error reading {path}: {e}")
+        return
+    
+    # Update dependencies
+    project = data.setdefault("project", {})
+    deps = project.setdefault("dependencies", [])
+    
+    # Convert existing deps to dict for easier updating
+    existing_deps = {}
+    for dep in deps:
+        if isinstance(dep, str):
+            name = dep.split("==")[0].split(">=")[0].split("<=")[0].strip()
+            existing_deps[name] = dep
+    
+    # Update dependencies
+    new_deps = []
+    for name, info in sorted(pkg_versions.items()):
+        if info["source"]:
+            new_deps.append(f"{name} @ {info['source']}")
+        else:
+            new_deps.append(f"{name}=={info['version']}")
+    
+    project["dependencies"] = new_deps
+    
+    try:
+        with open(path, "wb") as f:
+            tomli_w.dump(data, f)
+        print(f"✅ Updated {path} with {len(new_deps)} dependencies")
+        
+        # Show what changed
+        added = set(new_deps) - set(existing_deps.values())
+        removed = set(existing_deps.values()) - set(new_deps)
+        if added:
+            print("\n📦 Added dependencies:")
+            for dep in sorted(added):
+                print(f"  + {dep}")
+        if removed:
+            print("\n🗑️ Removed dependencies:")
+            for dep in sorted(removed):
+                print(f"  - {dep}")
+                
+    except Exception as e:
+        print(f"❌ Error writing {path}: {e}")
+        return
 
 

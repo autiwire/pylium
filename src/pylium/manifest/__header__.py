@@ -124,6 +124,8 @@ Manifest.__manifest__ = __manifest__.createChild(
                                 "Supports module, class, and function child manifests"]),
         Manifest.Changelog(version="0.1.4", date=Manifest.Date(2025,6,14), author=_manifest_core_authors.rraudzus,
                           notes=["The frontend now is set to NoFrontend by default instead of inheriting from parent"]),
+        Manifest.Changelog(version="0.1.5", date=Manifest.Date(2025,6,20), author=_manifest_core_authors.rraudzus,
+                          notes=["Added dependency category to manifest"]),
     ]
 )
 

@@ -104,6 +104,7 @@ class Manifest:
 
     from ._enums import ManifestObjectType as ObjectType
     from ._enums import ManifestDependencyType as DependencyType
+    from ._enums import ManifestDependencyCategory as DependencyCategory
     from ._enums import ManifestStatus as Status
     from ._enums import ManifestAccessMode as AccessMode
     from ._enums import ManifestThreadSafety as ThreadSafety
