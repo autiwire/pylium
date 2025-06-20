@@ -50,7 +50,7 @@ __manifest__ = Manifest(
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     aiAccessLevel=Manifest.AIAccessLevel.Read,
-    dependencies=[],
+    dependencies=[ Manifest.Dependency(name="packaging", version="25.3.0", type=Manifest.DependencyType.PIP, priority=Manifest.Dependency.Priority.SYSTEM) ],
     authors=_manifest_core_authors,
     maintainers=_manifest_core_maintainers,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=_manifest_core_authors.rraudzus),

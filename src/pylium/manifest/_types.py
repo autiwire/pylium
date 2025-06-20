@@ -229,23 +229,23 @@ class ManifestChangelog(ManifestValue):
 
 class ManifestDependency(ManifestValue):
     from ._enums import ManifestDependencyType as Type
-
-    #Type = ManifestDependencyType
-    
-    def __init__(self, name: str, version: str, type: Type = Type.PIP, source: str = None):
+    from ._enums import ManifestDependencyPriority as Priority
+   
+    def __init__(self, name: str, version: str, type: Type = Type.PIP, source: str = None, priority: Priority = Priority.AUTOMATIC):
         self.type = type
         self.name = name
         self.version = version
         self.source = source
+        self.priority = priority
 
     def __str__(self):
         if self.source is not None:
-            return f"{self.name} ({self.version}) [{self.type.name}] @ {self.source}"
+            return f"{self.name} ({self.version}) [{self.type.name}] @ {self.source} [{self.priority}]"
         else:
-            return f"{self.name} ({self.version}) [{self.type.name}]"
+            return f"{self.name} ({self.version}) [{self.type.name}] [{self.priority}]"
     
     def __repr__(self):
         if self.source is not None:
-            return f"{self.name} ({self.version}) [{self.type.name}] @ {self.source}"
+            return f"{self.name} ({self.version}) [{self.type.name}] @ {self.source} [{self.priority}]"
         else:
-            return f"{self.name} ({self.version}) [{self.type.name}]"
+            return f"{self.name} ({self.version}) [{self.type.name}] [{self.priority}]"

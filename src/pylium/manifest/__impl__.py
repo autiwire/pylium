@@ -550,9 +550,9 @@ class Manifest:
         """
         return Manifest(
             location=location,
-            description=description if description is not None else self.description,
-            changelog=changelog if changelog is not None else self.changelog,
-            dependencies=dependencies if dependencies is not None else self.dependencies,
+            description=description,
+            changelog=changelog,
+            dependencies=dependencies,
             authors=authors if authors is not None else self.authors,
             maintainers=maintainers if maintainers is not None else self.maintainers,
             copyright=copyright if copyright is not None else self.copyright,
@@ -560,7 +560,7 @@ class Manifest:
             status=status if status is not None else self.status,
             accessMode=accessMode if accessMode is not None else self.accessMode,
             threadSafety=threadSafety if threadSafety is not None else self.threadSafety,
-            frontend=frontend,
+            frontend=frontend if frontend is not None else self.frontend,
             backend=backend if backend is not None else self.backend,
             aiAccessLevel=aiAccessLevel if aiAccessLevel is not None else self.aiAccessLevel
         )

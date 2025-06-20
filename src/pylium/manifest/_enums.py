@@ -67,7 +67,42 @@ class ManifestDependencyType(Enum):
     
     def __repr__(self):
         return self.value
+
+
+class ManifestDependencyPriority(Enum):
+    """
+    Priority/Criticality level for dependencies.
+    Critical dependencies are required for basic functionality.
+    """
+    AUTOMATIC = "automatic"    # Will be added automatically by the system if required
+    SYSTEM = "system"      # Required for basic functionality (e.g., fire for CLI, packaging for versioning)
+    DEVELOPMENT = "development" # Only needed for development/testing
     
+    def __str__(self):
+        return self.value
+    
+    def __repr__(self):
+        return self.value
+    
+    def __hash__(self) -> int:
+        return hash(self.value)
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestDependencyPriority):
+            return False
+        return self.value == other.value
+    
+    def __ne__(self, other: Any) -> bool:
+        return not self.__eq__(other)
+    
+    @property
+    def description(self) -> str:
+        return {
+            ManifestDependencyPriority.AUTOMATIC: "Will be added automatically by the system if required",
+            ManifestDependencyPriority.SYSTEM: "Required for basic functionality (e.g., fire for CLI, packaging for versioning)",
+            ManifestDependencyPriority.DEVELOPMENT: "Only needed for development/testing"
+        }[self]
+
 
 class ManifestStatus(Enum):
     Development = "Development"
