@@ -22,6 +22,7 @@ __manifest__ : Manifest = __parent__.createChild(
     ]
 )
 
+
 class Crowbar(Header):
     """
     Installer and package management system for Pylium
@@ -56,7 +57,7 @@ class Crowbar(Header):
  
 
     @classmethod
-    def getDependencies(cls, path: str = "", recursive: bool = True) -> Dict[str, List[Manifest.Dependency]]:
+    def getDependencies(cls, path: str = "", recursive: bool = True, type_filter: str = None, category_filter: str = None) -> Dict[str, List[Manifest.Dependency]]:
         """
         Get the dependencies of the given object path
         """
@@ -70,7 +71,7 @@ class Crowbar(Header):
 
         if recursive:
             for child in manifest.children:
-                dependencies.update(cls.getDependencies(child.location.fqnShort, recursive))
+                dependencies.update(cls.getDependencies(child.location.fqnShort, recursive, type_filter, category_filter))
 
         # Add self to the dependencies if we have elements
         if len(manifest.dependencies) > 0:
@@ -80,7 +81,23 @@ class Crowbar(Header):
             else:
                 dependencies.update({manifest.location.fqnShort: manifest.dependencies})
 
-        return dependencies
+        # Filter dependencies based on type and category
+        filtered_dependencies = {}
+        for module, deps in dependencies.items():
+            filtered_deps = []
+            for dep in deps:
+                # Case insensitive comparison for both filters
+                dep_type = dep.type.name.upper()
+                dep_category = getattr(dep, 'category', None) and getattr(dep, 'category').name.upper()
+                type_match = type_filter is None or dep_type == type_filter.upper()
+                category_match = category_filter is None or (dep_category and dep_category == category_filter.upper())
+                
+                if type_match and category_match:
+                    filtered_deps.append(dep)
+            if filtered_deps:
+                filtered_dependencies[module] = filtered_deps
+
+        return filtered_dependencies
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs) 
@@ -88,59 +105,159 @@ class Crowbar(Header):
 
 @Manifest.func(__manifest__.createChild(
     location=None,
+    description="List the dependencies of the given object path with beautiful formatting and filtering",
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16),
                            author=__parent__.authors.rraudzus,
                            notes=["Added list_dependencies function to list the dependencies of the current package"]),
+        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 6, 20),
+                           author=__parent__.authors.rraudzus,
+                           notes=["Enhanced dependency listing with beautiful tree output",
+                                  "Added type and category filtering",
+                                  "Added statistics and summary information",
+                                  "Added requirements.txt export format via --simple flag",
+                                  "Fixed tree visualization with proper branch lines",
+                                  "Made type and category filters case-insensitive"])
     ]
 ))
-def list_dependencies(path: str = "", recursive: bool = True):
-    """
-    List the dependencies of the given object path
+def list_dependencies(path: str = "", recursive: bool = True, simple: bool = False,
+                     type_filter: str = None, category_filter: str = None):
+    """List the dependencies of the given object path with beautiful formatting and filtering.
 
     Args:
         path: The path to the object to list the dependencies for
         recursive: If True, list the dependencies of the dependencies
+        simple: If True, output in requirements.txt format (copy-paste ready)
+        type_filter: Filter by dependency type (PIP, PYLIUM)
+        category_filter: Filter by category (BUILD, RUNTIME, AUTOMATIC, DEVELOPMENT)
     """
 
-    dependencies = Crowbar.getDependencies(path, recursive)
-
-    print(f"LIST DEPENDENCIES: {path}")
-    print(f"  DEPENDENCIES: {dependencies}")
+    dependencies = Crowbar.getDependencies(path, recursive, type_filter, category_filter)
+    
+    if simple:
+        # Simple requirements.txt format
+        all_deps = []
+        for module_deps in dependencies.values():
+            for dep in module_deps:
+                if dep.type.name == "PIP":  # Only PIP dependencies for requirements.txt
+                    if hasattr(dep, 'source') and dep.source:
+                        all_deps.append(f"{dep.name} @ {dep.source}")
+                    else:
+                        all_deps.append(f"{dep.name}=={dep.version}")
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_deps = []
+        for dep in all_deps:
+            if dep not in seen:
+                unique_deps.append(dep)
+                seen.add(dep)
+        
+        for dep in sorted(unique_deps):
+            print(dep)
+        return
+    
+    # Beautiful output (default)
+    # Header
+    target = path if path else "pylium"
+    print(f"🔍 DEPENDENCY ANALYSIS")
+    print(f"📦 Target: {target}")
+    print(f"🔗 Recursive: {'Yes' if recursive else 'No'}")
+    
+    # Show active filters
+    filters = []
+    if type_filter:
+        filters.append(f"Type: {type_filter.upper()}")
+    if category_filter:
+        filters.append(f"Category: {category_filter.upper()}")
+    
+    if filters:
+        print(f"🔍 Filters: {', '.join(filters)}")
+    
+    print()
+    
+    if not dependencies:
+        print("✨ No dependencies found!")
+        if type_filter or category_filter:
+            print("💡 Try removing filters to see all dependencies.")
+        return
+    
+    # Statistics
+    total_deps = sum(len(deps) for deps in dependencies.values())
+    total_modules = len(dependencies)
+    
+    print(f"📊 STATISTICS:")
+    print(f"   • Total Dependencies: {total_deps}")
+    print(f"   • Modules with Dependencies: {total_modules}")
+    
+    # Count by category
+    category_counts = {}
+    for module_deps in dependencies.values():
+        for dep in module_deps:
+            category = getattr(dep, 'category', None)
+            if category:
+                category_name = category.name
+                category_counts[category_name] = category_counts.get(category_name, 0) + 1
+    
+    if category_counts:
+        print(f"   • By Category:")
+        for category, count in sorted(category_counts.items()):
+            emoji = {"BUILD": "🔧", "RUNTIME": "⚡", "AUTOMATIC": "🤖", "DEVELOPMENT": "🛠️"}.get(category, "📦")
+            print(f"     {emoji} {category}: {count}")
+    
+    # Count by type
+    type_counts = {}
+    for module_deps in dependencies.values():
+        for dep in module_deps:
+            type_name = dep.type.name
+            type_counts[type_name] = type_counts.get(type_name, 0) + 1
+    
+    if type_counts:
+        print(f"   • By Type:")
+        for type_name, count in sorted(type_counts.items()):
+            emoji = {"PIP": "🐍", "PYLIUM": "⚙️"}.get(type_name, "📦")
+            print(f"     {emoji} {type_name}: {count}")
+    print()
+    
+    # Dependency Tree
+    print(f"🌳 DEPENDENCY TREE:")
+    
+    for i, (module, deps) in enumerate(dependencies.items()):
+        is_last = i == len(dependencies) - 1
+        prefix = "└── " if is_last else "├── "
+        
+        # Module header
+        module_emoji = "📦" if module == "/" else "📄"
+        print(f"{prefix}{module_emoji} {module}")
+        
+        # Dependencies
+        for j, dep in enumerate(deps):
+            is_last_dep = j == len(deps) - 1
+            dep_prefix = ("    " if is_last else "│   ") + ("└── " if is_last_dep else "├── ")
+            
+            # Category emoji
+            category = getattr(dep, 'category', None)
+            category_emoji = {
+                "BUILD": "🔧",
+                "RUNTIME": "⚡",
+                "AUTOMATIC": "🤖",
+                "DEVELOPMENT": "🛠️"
+            }.get(category.name if category else "UNKNOWN", "📦")
+            
+            # Type emoji
+            type_emoji = {
+                "PIP": "🐍",
+                "PYLIUM": "⚙️"
+            }.get(dep.type.name, "📦")
+            
+            # Format dependency string
+            dep_str = f"{dep.name} ({dep.version})"
+            if hasattr(dep, 'source') and dep.source:
+                dep_str += f" @ {dep.source}"
+            
+            print(f"{dep_prefix}{category_emoji} {type_emoji} {dep_str}")
     
 
 
-@Manifest.func(__manifest__.createChild(
-    location=None,
-    status=Manifest.Status.Development,
-    frontend=Manifest.Frontend.CLI,
-    changelog=[
-        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16),
-                           author=__parent__.authors.rraudzus,
-                           notes=["Added list_dependencies function to list the dependencies of the current package"]),
-    ]
-))
-def test_crowbar():
-    """
-    Test the crowbar
-    """
-    print("TEST CROWBAR")
-
-
-@Manifest.func(__manifest__.createChild(
-    location=None,
-    status=Manifest.Status.Development,
-    frontend=Manifest.Frontend.CLI,
-    changelog=[
-        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16),
-                           author=__parent__.authors.rraudzus,
-                           notes=["Added test_crowbar2 function to test the crowbar2"]),
-    ]
-))
-def test_crowbar2():
-    """
-    Test the crowbar2
-    """
-    print("TEST CROWBAR2")
