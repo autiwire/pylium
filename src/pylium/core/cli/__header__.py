@@ -26,6 +26,8 @@ __manifest__: Manifest = __parent__.createChild(
                                         "Ensured recursive CLI calls behave identically to direct module calls"]),
         Manifest.Changelog(version="0.1.3", date=Manifest.Date(2025,6,11), author=__parent__.authors.rraudzus,
                                  notes=["Added __parent__ to the cli module manifest to allow for proper manifest resolution"]),
+        Manifest.Changelog(version="0.1.4", date=Manifest.Date(2025,6,20), author=__parent__.authors.rraudzus,
+                                 notes=["Added make_function_wrapper to CLIRenderer to allow for proper function wrapping"]),
     ]
 )
 

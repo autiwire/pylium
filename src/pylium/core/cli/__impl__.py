@@ -15,6 +15,21 @@ class CLIRenderer:
     def __init__(self, manifest: Manifest):
         self._manifest = manifest
     
+    @staticmethod
+    def make_function_wrapper(func):
+        """Creates a properly bound function wrapper that preserves the original function."""
+        @functools.wraps(func)
+        @fire.helptext.CommandCategory("FUNCTION")
+        def function_wrapper(self, *args, **kwargs):
+            return func(*args, **kwargs)
+        
+        # Create a signature that includes self (the wrapper is held in a cli class)
+        sig = inspect.signature(func)
+        params = list(sig.parameters.values())
+        new_params = [inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD)] + params
+        function_wrapper.__signature__ = inspect.Signature(new_params)
+        return function_wrapper
+    
     def render(self) -> Any:
         """Render the manifest hierarchy as a python-fire (modified with category support) compatible object."""
         # Create a dynamic class to hold the commands
@@ -73,6 +88,7 @@ class CLIRenderer:
                 #print(f"    isStaticMethod: {child.location.isStaticMethod}")
                 #print(f"    isMethod: {child.location.isMethod}")
                 
+                # TODO: FIX -> CLOSURE FACTORY??
                 @functools.wraps(my_func)
                 @fire.helptext.CommandCategory("METHOD")
                 def method_wrapper(*args, **kwargs):
@@ -100,20 +116,9 @@ class CLIRenderer:
 
 
             elif child.location.isFunction:
-                # It's a function - only include if it's not an implementation class
+                # It's a function - create a properly bound wrapper using the factory
                 my_func = getattr(target_module, child.location.funcname)
-                
-                @functools.wraps(my_func)
-                @fire.helptext.CommandCategory("FUNCTION")
-                def function_wrapper(self, *args, **kwargs):
-                    return my_func(*args, **kwargs)
-                
-                # Create a signature that includes self (the wrapper is hold in a cli class so python-fire interprets it as a method)
-                sig = inspect.signature(my_func)
-                params = list(sig.parameters.values())
-                new_params = [inspect.Parameter('self', inspect.Parameter.POSITIONAL_OR_KEYWORD)] + params
-                function_wrapper.__signature__ = inspect.Signature(new_params)
-                obj = function_wrapper
+                obj = self.make_function_wrapper(my_func)
 
             if obj is not None:               
                 name = child.location.localName

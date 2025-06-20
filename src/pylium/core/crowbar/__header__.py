@@ -106,7 +106,36 @@ def list_dependencies(path: str = "", recursive: bool = True):
     print(f"  DEPENDENCIES: {dependencies}")
     
 
-def list_packages(self):
+
+@Manifest.func(__manifest__.createChild(
+    location=None,
+    status=Manifest.Status.Development,
+    frontend=Manifest.Frontend.CLI,
+    changelog=[
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16),
+                           author=__parent__.authors.rraudzus,
+                           notes=["Added list_dependencies function to list the dependencies of the current package"]),
+    ]
+))
+def test_crowbar():
     """
-    List the packages in the current package
+    Test the crowbar
     """
+    print("TEST CROWBAR")
+
+
+@Manifest.func(__manifest__.createChild(
+    location=None,
+    status=Manifest.Status.Development,
+    frontend=Manifest.Frontend.CLI,
+    changelog=[
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16),
+                           author=__parent__.authors.rraudzus,
+                           notes=["Added test_crowbar2 function to test the crowbar2"]),
+    ]
+))
+def test_crowbar2():
+    """
+    Test the crowbar2
+    """
+    print("TEST CROWBAR2")
