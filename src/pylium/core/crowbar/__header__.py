@@ -1,7 +1,7 @@
 from pylium.core import __manifest__ as __parent_manifest__
 from pylium.manifest import Manifest
 from pylium.core.header import Header, classProperty, dlock
-from .data import DependencyInfo, ConflictInfo, DependencyStats, DependencyAnalysis
+from .models import ConflictInfo, DependencyStats, DependencyAnalysis
 
 import threading
 from abc import abstractmethod
@@ -175,23 +175,23 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
                 # Case 2: Single EXACT version with incompatible constraints
                 if len(exact_versions) == 1:
                     exact_ver, exact_module = exact_versions[0]
-                    exact_version = packaging.version.parse(exact_ver)
+                    exact_version = exact_ver.version
                     
                     # Check if EXACT version violates any MIN/MAX constraints
                     for min_ver, min_module in min_versions:
-                        min_version = packaging.version.parse(min_ver)
+                        min_version = min_ver.version
                         if exact_version < min_version:
                             warnings.append(f"# WARNING: {pkg_name}: EXACT version {exact_ver} in {exact_module} is lower than MINIMUM version {min_ver} in {min_module}")
                     
                     for max_ver, max_module in max_versions:
-                        max_version = packaging.version.parse(max_ver)
+                        max_version = max_ver.version
                         if exact_version > max_version:
                             warnings.append(f"# WARNING: {pkg_name}: EXACT version {exact_ver} in {exact_module} is higher than MAXIMUM version {max_ver} in {max_module}")
                 
                 # Case 3: MIN/MAX constraints with no possible version
                 if min_versions and max_versions:
-                    highest_min = max([(packaging.version.parse(v), m) for v, m in min_versions], key=lambda x: x[0])
-                    lowest_max = min([(packaging.version.parse(v), m) for v, m in max_versions], key=lambda x: x[0])
+                    highest_min = max([(v.version, v, m) for v, m in min_versions], key=lambda x: x[0])
+                    lowest_max = min([(v.version, v, m) for v, m in max_versions], key=lambda x: x[0])
                     
                     if highest_min[0] > lowest_max[0]:
                         warnings.append(f"# WARNING: {pkg_name}: No valid versions exist between MINIMUM {highest_min[0]} in {highest_min[1]} and MAXIMUM {lowest_max[0]} in {lowest_max[1]}")
@@ -592,7 +592,7 @@ def list_dependencies2(path: str = "", recursive: bool = True, type_filter: str 
     
     Returns:
         DependencyAnalysis object containing:
-        - dependencies: Dict[str, List[DependencyInfo]] - All dependencies per module
+        - dependencies: Dict[str, List[Manifest.Dependency]] - All dependencies per module
         - conflicts: List[ConflictInfo] - All detected conflicts
         - stats: DependencyStats - Statistics about dependencies
         
@@ -623,48 +623,48 @@ def list_dependencies2(path: str = "", recursive: bool = True, type_filter: str 
                         type="multiple_exact",
                         package=pkg_name,
                         severity="error",
-                        versions=[{"version": v, "module": m} for v, m in exact_versions]
+                        versions=[{"version": str(v), "module": m} for v, m in exact_versions]
                     ))
             
             # Case 2: Single EXACT version with incompatible constraints
             if len(exact_versions) == 1:
                 exact_ver, exact_module = exact_versions[0]
-                exact_version = packaging.version.parse(exact_ver)
+                exact_version = exact_ver.version
                 
                 for min_ver, min_module in min_versions:
-                    min_version = packaging.version.parse(min_ver)
+                    min_version = min_ver.version
                     if exact_version < min_version:
                         conflicts.append(ConflictInfo(
                             type="exact_below_minimum",
                             package=pkg_name,
                             severity="error",
-                            exact={"version": exact_ver, "module": exact_module},
-                            minimum={"version": min_ver, "module": min_module}
+                            exact={"version": str(exact_ver), "module": exact_module},
+                            minimum={"version": str(min_ver), "module": min_module}
                         ))
                 
                 for max_ver, max_module in max_versions:
-                    max_version = packaging.version.parse(max_ver)
+                    max_version = max_ver.version
                     if exact_version > max_version:
                         conflicts.append(ConflictInfo(
                             type="exact_above_maximum",
                             package=pkg_name,
                             severity="error",
-                            exact={"version": exact_ver, "module": exact_module},
-                            maximum={"version": max_ver, "module": max_module}
+                            exact={"version": str(exact_ver), "module": exact_module},
+                            maximum={"version": str(max_ver), "module": max_module}
                         ))
             
             # Case 3: MIN/MAX constraints with no possible version
             if min_versions and max_versions:
-                highest_min = max([(packaging.version.parse(v), v, m) for v, m in min_versions], key=lambda x: x[0])
-                lowest_max = min([(packaging.version.parse(v), v, m) for v, m in max_versions], key=lambda x: x[0])
+                highest_min = max([(v.version, v, m) for v, m in min_versions], key=lambda x: x[0])
+                lowest_max = min([(v.version, v, m) for v, m in max_versions], key=lambda x: x[0])
                 
                 if highest_min[0] > lowest_max[0]:
                     conflicts.append(ConflictInfo(
                         type="no_valid_version",
                         package=pkg_name,
                         severity="error",
-                        minimum={"version": highest_min[1], "module": highest_min[2]},
-                        maximum={"version": lowest_max[1], "module": lowest_max[2]}
+                        minimum={"version": str(highest_min[1]), "module": highest_min[2]},
+                        maximum={"version": str(lowest_max[1]), "module": lowest_max[2]}
                     ))
     
     # Collect statistics
@@ -689,14 +689,9 @@ def list_dependencies2(path: str = "", recursive: bool = True, type_filter: str 
             type_name = dep.type.name
             stats.by_type[type_name] = stats.by_type.get(type_name, 0) + 1
     
-    # Convert dependencies to structured format
-    deps_structured = {}
-    for module, deps in dependencies.items():
-        deps_structured[module] = [DependencyInfo.from_manifest_dependency(dep) for dep in deps]
-    
     # Create the analysis object
     analysis = DependencyAnalysis(
-        dependencies=deps_structured,
+        dependencies=dependencies,
         conflicts=conflicts,
         stats=stats
     )
@@ -707,7 +702,6 @@ def list_dependencies2(path: str = "", recursive: bool = True, type_filter: str 
     
     import json
     json_str = json.dumps(analysis.to_dict(), indent=4)
-    
     
     # deserialize the json string back to a DependencyAnalysis object
     analysis = DependencyAnalysis.from_dict(json.loads(json_str))
