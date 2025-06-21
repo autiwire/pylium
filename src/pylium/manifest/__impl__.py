@@ -94,7 +94,7 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
     # Manifests own manifest
     # Usually here in header classes the manifest is defined
     __manifest__: ClassVar["Manifest"] = None
-    ___root_manifest____: ClassVar["Manifest"] = None
+    __root_manifest__: ClassVar["Manifest"] = None
 
     # Pydantic fields
     location: Optional[ManifestTypes.Location] = Field(default=None, description="Location information for this manifest")
@@ -142,7 +142,7 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
 
     @classmethod
     def getManifest(cls, path: Optional[str] = None, search_base: Optional["Manifest"] = None) -> "Manifest":
-        current_manifest = search_base if search_base else Manifest.___root_manifest____
+        current_manifest = search_base if search_base else Manifest.__root_manifest__
         if not path:
             return current_manifest
         
