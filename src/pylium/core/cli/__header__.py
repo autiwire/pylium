@@ -1,21 +1,21 @@
-from pylium.core import __manifest__ as __parent__
+from pylium.core import __manifest__ as __parent_manifest_
 from pylium.core.header import Manifest, Header
 from pylium.core.frontend import Frontend
 
 from typing import ClassVar
 
-__manifest__: Manifest = __parent__.createChild(
+__manifest__: Manifest = __parent_manifest_.createChild(
     location=Manifest.Location(module=__name__, classname=None),
     description="CLI module",
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     dependencies=[ Manifest.Dependency(name="fire", version="0.7.0", type=Manifest.Dependency.Type.PIP, source="git+https://github.com/Verlusti/python-fire.git", category=Manifest.Dependency.Category.RUNTIME) ],
     changelog=[
-        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,6), author=__parent__.authors.rraudzus, 
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,6), author=__parent_manifest_.authors.rraudzus, 
                                  notes=["Initial release"]),
-        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,6), author=__parent__.authors.rraudzus, 
+        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,6), author=__parent_manifest_.authors.rraudzus, 
                                  notes=["Added __manifest__ for module"]),
-        Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,8), author=__parent__.authors.rraudzus,
+        Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,8), author=__parent_manifest_.authors.rraudzus,
                                  notes=["Complete architectural overhaul to tree-based CLI system",
                                         "Implemented CommandNode and CommandTree classes for canonical command structure",
                                         "Added CLIRenderer for python-fire frontend compatibility",
@@ -24,9 +24,9 @@ __manifest__: Manifest = __parent__.createChild(
                                         "Implemented proper visibility checking for locally defined vs imported classes",
                                         "Added categorization support (CLASS, COMMANDS, SUBMODULES) with fire categories",
                                         "Ensured recursive CLI calls behave identically to direct module calls"]),
-        Manifest.Changelog(version="0.1.3", date=Manifest.Date(2025,6,11), author=__parent__.authors.rraudzus,
-                                 notes=["Added __parent__ to the cli module manifest to allow for proper manifest resolution"]),
-        Manifest.Changelog(version="0.1.4", date=Manifest.Date(2025,6,20), author=__parent__.authors.rraudzus,
+        Manifest.Changelog(version="0.1.3", date=Manifest.Date(2025,6,11), author=__parent_manifest_.authors.rraudzus,
+                                 notes=["Added __parent_manifest_ to the cli module manifest to allow for proper manifest resolution"]),
+        Manifest.Changelog(version="0.1.4", date=Manifest.Date(2025,6,20), author=__parent_manifest_.authors.rraudzus,
                                  notes=["Added make_function_wrapper to CLIRenderer to allow for proper function wrapping"]),
     ]
 )
@@ -43,13 +43,13 @@ class CLI(Frontend):
         frontend=Manifest.Frontend.CLI,
         dependencies=[],
         changelog=[
-            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,8), author=__parent__.authors.rraudzus,
+            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,8), author=__parent_manifest_.authors.rraudzus,
                                notes=["Redesigned CLI class with tree-based architecture",
                                       "Replaced dynamic class building with CommandTree/CommandNode approach", 
                                       "Added support for recursive navigation with consistent behavior",
                                       "Enhanced manifest discovery for proper header resolution",
                                       "CLI now serves as frontend-agnostic command tree builder"]),
-            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,20), author=__parent__.authors.rraudzus,
+            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,20), author=__parent_manifest_.authors.rraudzus,
                                notes=["Fixed critical bug in function wrapping using closure factory pattern",
                                       "Added make_function_wrapper to properly bind standalone functions",
                                       "Improved stability of CLI command routing",

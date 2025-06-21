@@ -13,7 +13,7 @@ dynamic = ["version"]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "pydantic>=2.0.0",
+    "pydantic>=2.11.4",
     "pydantic-settings>=2.0.0",
     "fire @ git+https://github.com/Verlusti/python-fire.git"
 ]

@@ -6,8 +6,9 @@ Types for the manifest.
 from .value import ManifestValue
 
 # Standard library imports
-from typing import Any
+from typing import Any, Optional
 from enum import Enum
+from pydantic import computed_field, Field
 
 
 class ManifestDependencyType(Enum):
@@ -48,8 +49,10 @@ class ManifestDependencyCategory(Enum):
     def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
     
+    @computed_field
     @property
     def description(self) -> str:
+        """Get the description of the dependency category."""
         return {
             ManifestDependencyCategory.BUILD: "Required for building the package",
             ManifestDependencyCategory.RUNTIME: "Required for running the package (minimal set)",
@@ -101,27 +104,46 @@ class ManifestDependencyDirection(Enum):
         }[self]
 
 
-class ManifestDependency(ManifestValue):
+class ManifestDependencyTypes():
+    """
+    Types for dependencies.
+    """
     Type = ManifestDependencyType
     Category = ManifestDependencyCategory
     Direction = ManifestDependencyDirection
-   
-    def __init__(self, name: str, version: str, type: Type = Type.PIP, source: str = None, category: Category = Category.AUTOMATIC, direction: Direction = Direction.MINIMUM):
-        self.type = type
-        self.name = name
-        self.version = version
-        self.source = source
-        self.category = category
-        self.direction = direction
 
-    def __str__(self):
+ManifestDependencyTypes.Types = ManifestDependencyTypes
+
+
+class ManifestDependency(ManifestValue, ManifestDependencyTypes):
+    """A dependency in the manifest system."""
+    
+    type: ManifestDependencyTypes.Type = Field(
+        default=ManifestDependencyTypes.Type.PIP,
+        description="Type of the dependency"
+    )
+    name: str = Field(description="Name of the dependency")
+    version: str = Field(description="Version of the dependency")
+    source: Optional[str] = Field(
+        default=None,
+        description="Source URL or path for the dependency"
+    )
+    category: ManifestDependencyTypes.Category = Field(
+        default=ManifestDependencyTypes.Category.AUTOMATIC,
+        description="Category of the dependency"
+    )
+    direction: ManifestDependencyTypes.Direction = Field(
+        default=ManifestDependencyTypes.Direction.MINIMUM,
+        description="Version constraint direction"
+    )
+
+    def __str__(self) -> str:
+        """Return a string representation of the dependency."""
         if self.source is not None:
             return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] @ {self.source} [{self.category}]"
         else:
             return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] [{self.category}]"
     
-    def __repr__(self):
-        if self.source is not None:
-            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] @ {self.source} [{self.category}]"
-        else:
-            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] [{self.category}]"
+    def __repr__(self) -> str:
+        """Return a detailed string representation of the dependency."""
+        return str(self)

@@ -1,10 +1,10 @@
-from pylium.core import __manifest__ as __parent__
+from pylium.core import __manifest__ as __parent_manifest_
 from pylium.core.header import Manifest, Header
 from pylium.core.frontend import Frontend
 
 from typing import ClassVar
 
-__manifest__: Manifest = __parent__.createChild(
+__manifest__: Manifest = __parent_manifest_.createChild(
     location=Manifest.Location(module=__name__, classname=None),
     description="API module",
     status=Manifest.Status.Development,
@@ -12,11 +12,11 @@ __manifest__: Manifest = __parent__.createChild(
     dependencies=[  Manifest.Dependency(name="fastapi", version="0.115.6", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME),
                     Manifest.Dependency(name="fastapi", version="0.110.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME, direction=Manifest.Dependency.Direction.EXACT) ],
     changelog=[
-        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,15), author=__parent__.authors.rraudzus, 
+        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,15), author=__parent_manifest_.authors.rraudzus, 
                                  notes=["Initial release"]),
-        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,15), author=__parent__.authors.rraudzus, 
+        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,15), author=__parent_manifest_.authors.rraudzus, 
                                  notes=["Added __manifest__ for module"]),
-        Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,15), author=__parent__.authors.rraudzus, 
+        Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,15), author=__parent_manifest_.authors.rraudzus, 
                                  notes=["Changed base class to Frontend, added frontend registration"]),
     ]
 )
@@ -34,11 +34,11 @@ class API(Frontend):
         status=Manifest.Status.Development,
         frontend=Manifest.Frontend.API,
         changelog=[
-            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,15), author=__parent__.authors.rraudzus, 
+            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,15), author=__parent_manifest_.authors.rraudzus, 
                                  notes=["Initial release"]),
-            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,15), author=__parent__.authors.rraudzus, 
+            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,15), author=__parent_manifest_.authors.rraudzus, 
                                  notes=["Added __manifest__ for API class"]),
-            Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,15), author=__parent__.authors.rraudzus, 
+            Manifest.Changelog(version="0.1.2", date=Manifest.Date(2025,6,15), author=__parent_manifest_.authors.rraudzus, 
                                  notes=["Updated to use Frontend base class, added frontendType"]),
         ]
     )

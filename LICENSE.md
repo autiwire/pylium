@@ -22,7 +22,7 @@ method), it inherits the license of its parent by default.
 This inheritance can be overridden by explicitly specifying a license for the
 child manifest.
 
-The root `__manifest__` of a project (often assigned to a `__project__`
+The root `__manifest__` of a project (often assigned to a `__project_manifest__`
 variable in the project's main `__init__.py`) serves as the ultimate default
 license for any component within that project that does not have an overriding
 license specified in its own manifest or in an intermediary parent manifest.

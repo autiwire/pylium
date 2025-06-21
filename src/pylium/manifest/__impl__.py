@@ -1,18 +1,25 @@
-from typing import ClassVar, List, Optional, Any, Callable
-from types import FunctionType
-from packaging.version import Version 
+# Pylium imports
+from .types import ManifestTypes
 
+# Standard library imports
+from typing import ClassVar, List, Optional, Any, Callable, Dict, Annotated
+from types import FunctionType
 import importlib.machinery
 import importlib.util
 import pkgutil
 import inspect
 import sys
 
+# External imports
+from packaging.version import Version 
+from pydantic import Field, computed_field, ConfigDict
+
+
 from logging import getLogger
 logger = getLogger(__name__)
 
 
-class Manifest:
+class Manifest(ManifestTypes.XObject, ManifestTypes):
     """
     Metadata about a code unit (module, class, etc.).
     Can optionally include location information.
@@ -44,19 +51,19 @@ class Manifest:
     The manifest for a module, class, or function is defined in the module or class header
     and called __manifest__.
 
-    Now in the root "a", set __project__ = __manifest__, this marks the root
+    Now in the root "a", set __project_manifest__ = __manifest__, this marks the root
     manifest for the project.
     
     In the module "a.b", import the manifest from the root "a" and set
-    __parent__ = __manifest__, this marks the parent manifest for the module.
-    Create the __manifest__ for the module by calling __parent__.createChild(...),
+    __parent_manifest_ = __manifest__, this marks the parent manifest for the module.
+    Create the __manifest__ for the module by calling __parent_manifest_.createChild(...),
     this creates a child manifest for the module.
 
     In the module "a.b.c", create the __manifest__ for the module by calling,
-    do as above, __parent__ = __manifest__, __manifest__ = __parent__.createChild(...), 
+    do as above, __parent_manifest_ = __manifest__, __manifest__ = __parent_manifest_.createChild(...), 
     where parent is the manifest from the module "a.b".
 
-    Define the class "D" with the manifest __manifest__ = __parent__.createChild(...),
+    Define the class "D" with the manifest __manifest__ = __parent_manifest_.createChild(...),
     where parent is the manifest from the module "a.b.c".
 
     For functions, use the @Manifest.func decorator to attach a manifest:
@@ -82,38 +89,29 @@ class Manifest:
     This explicit pattern ensures AI-readable code and maintains clear separation
     between structural hierarchy and authorship/policy inheritance.
     """
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # Manifests own manifest
     # Usually here in header classes the manifest is defined
     __manifest__: ClassVar["Manifest"] = None
-    __root__: ClassVar["Manifest"] = None
+    ___root_manifest____: ClassVar["Manifest"] = None
 
-    from .types import ManifestValue as Value
-    from .types import ManifestLocation as Location
-    from .types import ManifestAuthor as Author
-    from .types import ManifestAuthorList as AuthorList
-    from .types import ManifestMaintainerList as MaintainerList
-    from .types import ManifestContributorList as ContributorList
-    from .types import ManifestChangelog as Changelog
-    from .types import ManifestDependency as Dependency
-    
-    from .types import ManifestCopyright as Copyright
-    from .types import ManifestLicense as License
-    from .types import ManifestLicenseList as LicenseList
-    from .types import ManifestLicenses as Licenses
-
-    from .types import ManifestObjectType as ObjectType
-    from .types import ManifestStatus as Status
-    from .types import ManifestAccessMode as AccessMode
-    from .types import ManifestThreadSafety as ThreadSafety
-
-    from .types import ManifestFrontend as Frontend
-    from .types import ManifestBackend as Backend
-    from .types import ManifestBackendGroup as BackendGroup
-    from .types import ManifestAIAccessLevel as AIAccessLevel
-
-    Date = Value.Date
-
+    # Pydantic fields
+    location: Optional[ManifestTypes.Location] = Field(default=None, description="Location information for this manifest")
+    description: str = Field(default="", description="Description of this manifest")
+    changelog: List[ManifestTypes.Changelog] = Field(default_factory=list, description="List of changelog entries")
+    dependencies: List[ManifestTypes.Dependency] = Field(default_factory=list, description="List of dependencies")
+    authors: ManifestTypes.AuthorList = Field(default_factory=lambda: ManifestTypes.AuthorList([]), description="List of authors")
+    maintainers: Optional[ManifestTypes.MaintainerList] = Field(default=None, description="List of maintainers")
+    copyright: Optional[ManifestTypes.Copyright] = Field(default=None, description="Copyright information")
+    license: Optional[ManifestTypes.License] = Field(default=None, description="License information")
+    status: ManifestTypes.Status = Field(default=ManifestTypes.Status.Development, description="Development status")
+    accessMode: ManifestTypes.AccessMode = Field(default=ManifestTypes.AccessMode.Sync, description="Access mode")
+    aiAccessLevel: ManifestTypes.AIAccessLevel = Field(default=ManifestTypes.AIAccessLevel.All, description="AI access level")
+    threadSafety: ManifestTypes.ThreadSafety = Field(default=ManifestTypes.ThreadSafety.Unsafe, description="Thread safety level")
+    frontend: ManifestTypes.Frontend = Field(default=ManifestTypes.Frontend.NoFrontend, description="Frontend type")
+    backend: Optional[ManifestTypes.Backend] = Field(default=None, description="Backend type")
+    additionalInfo: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
     @classmethod
     def func(cls, manifest: "Manifest") -> Callable:
@@ -144,7 +142,7 @@ class Manifest:
 
     @classmethod
     def getManifest(cls, path: Optional[str] = None, search_base: Optional["Manifest"] = None) -> "Manifest":
-        current_manifest = search_base if search_base else Manifest.__root__
+        current_manifest = search_base if search_base else Manifest.___root_manifest____
         if not path:
             return current_manifest
         
@@ -168,46 +166,51 @@ class Manifest:
 
 
     def __init__(self,
-                location: Location,
+                location: ManifestTypes.Location,
                 description: str = "",
-                changelog: Optional[List[Changelog]] = None, 
-                dependencies: Optional[List[Dependency]] = None, 
-                authors: Optional[AuthorList] = None,
-                maintainers: Optional[MaintainerList] = None,
-                copyright: Optional[Copyright] = None,
-                license: Optional[License] = None,
-                status: Status = Status.Development,
-                accessMode: AccessMode = AccessMode.Sync,
-                aiAccessLevel: Optional[AIAccessLevel] = AIAccessLevel.All,
-                threadSafety: Optional[ThreadSafety] = ThreadSafety.Unsafe,
-                frontend: Optional[Frontend] = Frontend.NoFrontend,
-                backend: Optional[Backend] = Backend.NoBackend,
+                changelog: Optional[List[ManifestTypes.Changelog]] = None, 
+                dependencies: Optional[List[ManifestTypes.Dependency]] = None, 
+                authors: Optional[ManifestTypes.AuthorList] = None,
+                maintainers: Optional[ManifestTypes.MaintainerList] = None,
+                copyright: Optional[ManifestTypes.Copyright] = None,
+                license: Optional[ManifestTypes.License] = None,
+                status: ManifestTypes.Status = ManifestTypes.Status.Development,
+                accessMode: ManifestTypes.AccessMode = ManifestTypes.AccessMode.Sync,
+                aiAccessLevel: Optional[ManifestTypes.AIAccessLevel] = ManifestTypes.AIAccessLevel.All,
+                threadSafety: Optional[ManifestTypes.ThreadSafety] = ManifestTypes.ThreadSafety.Unsafe,
+                frontend: Optional[ManifestTypes.Frontend] = ManifestTypes.Frontend.NoFrontend,
+                backend: Optional[ManifestTypes.Backend] = ManifestTypes.Backend.NoBackend,
                 *args, 
                 **kwargs):
+        """Initialize a new Manifest instance."""
+        # Initialize Pydantic model with all fields
+        super().__init__(
+            location=location,
+            description=description,
+            changelog=changelog if changelog is not None else [],
+            dependencies=dependencies if dependencies is not None else [],
+            authors=authors if authors is not None else ManifestTypes.AuthorList([]),
+            maintainers=maintainers if maintainers is not None else None,  # Will use authors if None
+            copyright=copyright,
+            license=license,
+            status=status,
+            accessMode=accessMode,
+            aiAccessLevel=aiAccessLevel,
+            threadSafety=threadSafety,
+            frontend=frontend,
+            backend=backend,
+            additionalInfo=kwargs
+        )
         
-        self.location = location
-        self.description = description
-        self.changelog = changelog if changelog is not None else []
-        self.dependencies = dependencies if dependencies is not None else []
-        self.authors = authors if authors is not None else Manifest.AuthorList([])
-        self.maintainers = maintainers if maintainers is not None else self.authors # If maintainers not given, use authors
-        self.copyright = copyright
-        self.license = license if license is not None else self.Licenses.NoLicense # Default to NoLicense
-        self.status = status
-        self.accessMode = accessMode
-        self.threadSafety = threadSafety
-        self.frontend = frontend
-        self.backend = backend
-        self.aiAccessLevel = aiAccessLevel if aiAccessLevel is not None else self.AIAccessLevel.NoAccess
+        # Set maintainers to authors if not provided
+        if self.maintainers is None:
+            self.maintainers = self.authors
 
-        # Store any additional keyword arguments
-        self.additionalInfo = kwargs
-        
-
+    @computed_field
     @property
-    def objectType(self) -> ObjectType:
-        # Determine the object type based on the location
-        object_type = Manifest.ObjectType.Invalid
+    def objectType(self) -> ManifestTypes.ObjectType:
+        """Determine the object type based on the location."""
+        object_type = ManifestTypes.ObjectType.Invalid
         if self.location:
             if self.location.isPackage:
                 object_type = Manifest.ObjectType.Package
@@ -222,23 +225,21 @@ class Manifest:
         return object_type
     
 
+    @computed_field
     @property
     def isRoot(self) -> bool:
-        """
-        Checks if the location points to the root manifest.
-        """
-
+        """Check if the location points to the root manifest."""
         return isinstance(self, RootManifest)
 
 
+    @computed_field
     @property
     def parent(self) -> Optional["Manifest"]:
         """
-        Dynamically determines the parent manifest based on the location.
+        Dynamically determine the parent manifest based on the location.
         For module manifests, looks for parent module's manifest.
         For class manifests, looks for containing module's manifest.
         """
-
         if not self.location or not self.location.module:
             return None
 
@@ -270,10 +271,10 @@ class Manifest:
                 return parent
             
             # For module manifests, parent is the parent module
-            # First try to catch __parent__ in the module
+            # First try to catch __parent_manifest_ in the module
             try:
                 parent = importlib.import_module(self.location.module)
-                return getattr(parent, "__parent__", None)
+                return getattr(parent, "__parent_manifest_", None)
             except ImportError:
                 pass
 
@@ -291,10 +292,11 @@ class Manifest:
 
         return None
 
+    @computed_field
     @property
     def children(self) -> List["Manifest"]:
         """
-        Returns a list of direct child manifests.
+        Return a list of direct child manifests.
         
         The manifest hierarchy is defined by parent-child relationships:
         
@@ -391,25 +393,27 @@ class Manifest:
 
         return childs
 
+    @computed_field
     @property
     def project(self) -> Optional["Manifest"]:
         """
-        The project manifest is the root manifest for the project.
-        It is the module that has __project__ in its header.
+        Get the project manifest (root manifest for the project).
+        It is the module that has __project_manifest__ in its header.
         """
         mod = self        
         while mod is not None:
-            # Check if my own module has __project__
-            if hasattr(importlib.import_module(mod.location.module), "__project__"):
+            # Check if my own module has __project_manifest__
+            if hasattr(importlib.import_module(mod.location.module), "__project_manifest__"):
                 return mod
-            # If not, check if my parent has __project__
+            # If not, check if my parent has __project_manifest__
             mod = mod.parent
         return None
 
+    @computed_field
     @property
-    def contributors(self) -> ContributorList:
-        # We create a list of contributors from authors, maintainers, and changelog entries
-        _contributors = set() # Using a set to store authors to avoid duplicates
+    def contributors(self) -> ManifestTypes.ContributorList:
+        """Get a list of all contributors from authors, maintainers, and changelog entries."""
+        _contributors = set()  # Using a set to store authors to avoid duplicates
         if self.authors:
             for author in self.authors:
                 _contributors.add(author)
@@ -419,58 +423,69 @@ class Manifest:
         if self.changelog:
             for entry in self.changelog:
                 if entry.author:
-                    _contributors.add(entry.author) # Add author from changelog
+                    _contributors.add(entry.author)  # Add author from changelog
         return Manifest.ContributorList(list(_contributors)) 
 
+    @computed_field
     @property
     def version(self) -> Version:
+        """Get the current version from the latest changelog entry."""
         if self.changelog and self.changelog[0].version:
-            return Version(self.changelog[0].version)
+            return self.changelog[0].version
         raise ValueError("Version not found in changelog")
 
+    @computed_field
     @property
     def author(self) -> str:
-        # Returns the name of the first author if available
+        """Get the name of the first author if available."""
         if self.authors and len(self.authors) > 0:
             return self.authors[0].name
         return ""
 
+    @computed_field
     @property
     def maintainer(self) -> str:
-        # Returns the name of the first maintainer if available
+        """Get the name of the first maintainer if available."""
         if self.maintainers and len(self.maintainers) > 0:
             return self.maintainers[0].name
         return ""
 
+    @computed_field
     @property
     def email(self) -> str:
-        # Returns the email of the first author if available
+        """Get the email of the first author if available."""
         if self.authors and len(self.authors) > 0 and self.authors[0].email:
             return self.authors[0].email
         return ""
 
+    @computed_field
     @property
     def credits(self) -> List[str]:
-        # Returns a list of author names
+        """Get a list of all author names."""
         return [author.name for author in self.authors]
 
+    @computed_field
     @property
-    def created(self) -> Optional[Date]:
+    def created(self) -> Optional[ManifestTypes.Date]:
+        """Get the creation date from the last changelog entry."""
         if self.changelog:
             # Assuming the last entry in the changelog is the creation date
             return self.changelog[-1].date
         return None
 
+    @computed_field
     @property
-    def updated(self) -> Optional[Date]:
+    def updated(self) -> Optional[ManifestTypes.Date]:
+        """Get the last update date from the first changelog entry."""
         if self.changelog:
             # Assuming the first entry in the changelog is the last update date
             return self.changelog[0].date
         return None
 
+    @computed_field
     @property
     def doc(self) -> str:
-        # Basic documentation string, could be expanded
+        """Get a basic documentation string."""
         parts = [self.description]
         if self.version:
             parts.append(f"Version: {self.version}")
@@ -527,20 +542,20 @@ class Manifest:
         return (self.location.fqn, self.version if self.changelog else Version("0")) >= (other.location.fqn, other.version if other.changelog else Version("0"))
 
     def createChild(self, 
-                   location: Location,
+                   location: ManifestTypes.Location,
                    description: Optional[str] = None,
-                   changelog: Optional[List[Changelog]] = None,
-                   dependencies: Optional[List[Dependency]] = None,
-                   authors: Optional[AuthorList] = None,
-                   maintainers: Optional[MaintainerList] = None,
-                   copyright: Optional[Copyright] = None,
-                   license: Optional[License] = None,
-                   status: Optional[Status] = None,
-                   accessMode: Optional[AccessMode] = None,
-                   threadSafety: Optional[ThreadSafety] = None,
-                   frontend: Optional[Frontend] = Frontend.NoFrontend,
-                   backend: Optional[Backend] = None,
-                   aiAccessLevel: Optional[AIAccessLevel] = None) -> "Manifest":
+                   changelog: Optional[List[ManifestTypes.Changelog]] = None,
+                   dependencies: Optional[List[ManifestTypes.Dependency]] = None,
+                   authors: Optional[ManifestTypes.AuthorList] = None,
+                   maintainers: Optional[ManifestTypes.MaintainerList] = None,
+                   copyright: Optional[ManifestTypes.Copyright] = None,
+                   license: Optional[ManifestTypes.License] = None,
+                   status: Optional[ManifestTypes.Status] = None,
+                   accessMode: Optional[ManifestTypes.AccessMode] = None,
+                   threadSafety: Optional[ManifestTypes.ThreadSafety] = None,
+                   frontend: Optional[ManifestTypes.Frontend] = ManifestTypes.Frontend.NoFrontend,
+                   backend: Optional[ManifestTypes.Backend] = None,
+                   aiAccessLevel: Optional[ManifestTypes.AIAccessLevel] = None) -> "Manifest":
         """
         Creates a new Manifest instance that inherits attributes from this (parent) manifest.
         Attributes that are explicitly provided to createChild will override the parent's attributes.
@@ -569,10 +584,12 @@ class RootManifest(Manifest):
     The root manifest is the root manifest for everything.
     Create top level children from this manifest.
     """
-
+    # No additional fields needed for RootManifest, it inherits all fields from Manifest
+    
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)        
-
+        """Initialize a new RootManifest instance."""
+        # Initialize base Manifest with all fields
+        super().__init__(*args, **kwargs)
     
     @property
     def parent(self) -> Optional["Manifest"]:
@@ -580,12 +597,11 @@ class RootManifest(Manifest):
     
     @property
     def children(self) -> List["Manifest"]:
-        # We need to search for __project__ in all available modules
-        # and return the manifest for the module that has __project__
-        
+        # We need to search for __project_manifest__ in all available modules
+        # and return the manifest for the module that has __project_manifest__
         _children = []
         for module in sys.modules.values():
             # We only accept top level packages here to be listed under the root manifest
-            if hasattr(module, "__project__") and not "." in module.__name__:
-                _children.append(module.__project__)
+            if hasattr(module, "__project_manifest__") and not "." in module.__name__:
+                _children.append(module.__project_manifest__)
         return _children

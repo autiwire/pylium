@@ -3,65 +3,42 @@ Type definitions for the manifest system.
 All types are imported and re-exported here for convenient access.
 """
 
-from .xobject import XObject
-from .value import ManifestValue
-from .accessmode import ManifestAccessMode
-from .ai import ManifestAIAccessLevel
-from .author import ( 
-    ManifestAuthor, 
-    ManifestAuthorList, 
-    ManifestContributorList, 
-    ManifestMaintainerList 
-)
-from .backend import (
-    ManifestBackend, 
-    ManifestBackendGroup
-)
-from .changelog import ManifestChangelog
-from .dependency import (
-    ManifestDependency,
-    ManifestDependencyCategory,
-    ManifestDependencyDirection,
-    ManifestDependencyType,
-)
-from .frontend import ManifestFrontend
-from .license import (
-    ManifestCopyright, 
-    ManifestLicense, 
-    ManifestLicenseList,
-    ManifestLicenses
-)
-from .location import ManifestLocation
-from .objecttype import ManifestObjectType
-from .status import ManifestStatus
-from .thread import ManifestThreadSafety
+class ManifestTypes():
+    from .xobject import XObject
+    from .value import ManifestValue as Value
+    Date = Value.Date
+    
+    from .version import ManifestVersion as Version
+    from .location import ManifestLocation as Location
+    from .objecttype import ManifestObjectType as ObjectType
+    from .status import ManifestStatus as Status
+    from .changelog import ManifestChangelog as Changelog
+    from .dependency import ManifestDependency as Dependency
+
+    from .author import ( 
+        ManifestAuthor as Author, 
+        ManifestAuthorList as AuthorList, 
+        ManifestContributorList as ContributorList, 
+        ManifestMaintainerList as MaintainerList 
+    )
+
+    from .license import (
+        ManifestCopyright as Copyright, 
+        ManifestLicense as License, 
+        ManifestLicenseList as LicenseList,
+        ManifestLicenses as Licenses
+    )
+
+    from .thread import ManifestThreadSafety as ThreadSafety
+    from .accessmode import ManifestAccessMode as AccessMode
+    from .ai import ManifestAIAccessLevel as AIAccessLevel
+    
+    from .frontend import ManifestFrontend as Frontend
+    from .backend import (
+        ManifestBackend as Backend, 
+        ManifestBackendGroup as BackendGroup
+    )
 
 __all__ = [
-    # Base classes
-    "XObject",
-    "ManifestValue",
-
-    # Core types
-    "ManifestAccessMode",
-    "ManifestAIAccessLevel",
-    "ManifestAuthor",
-    "ManifestAuthorList",
-    "ManifestBackend",
-    "ManifestBackendGroup",
-    "ManifestChangelog",
-    "ManifestContributorList",
-    "ManifestCopyright",
-    "ManifestDependency",
-    "ManifestDependencyCategory",
-    "ManifestDependencyDirection",
-    "ManifestDependencyType",
-    "ManifestFrontend",
-    "ManifestLicense",
-    "ManifestLicenseList",
-    "ManifestLicenses",
-    "ManifestLocation",
-    "ManifestMaintainerList",
-    "ManifestObjectType",
-    "ManifestStatus",
-    "ManifestThreadSafety",
+    "ManifestTypes"
 ]

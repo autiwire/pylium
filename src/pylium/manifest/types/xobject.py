@@ -10,9 +10,17 @@ from datetime import date
 from pydantic import BaseModel, Field, field_validator
 
 
+
 class XObject(BaseModel):
     """
     Generic base class for pylium objects.
     """
     
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        return self.model_dump_json(indent=2)
+    
+    def __repr__(self):
+        return self.model_dump_json(indent=2)

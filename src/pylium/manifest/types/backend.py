@@ -4,6 +4,8 @@ Backend type for the manifest.
 
 # Standard library imports
 from enum import Flag
+from typing import Any
+from pydantic import computed_field
 
 
 class ManifestBackendGroup(Flag):
@@ -61,8 +63,10 @@ class ManifestBackend(Flag):
     Docker          = 1 << 5
     All             = SQLite | Redis | PostgreSQL | File | MQTT | Docker
 
+    @computed_field
     @property
-    def group(self) -> ManifestBackendGroup:
+    def group(self) -> "ManifestBackendGroup":
+        """Get the backend group(s) this backend belongs to."""
         mapping = {
             ManifestBackend.SQLite: ManifestBackendGroup.Database,
             ManifestBackend.Redis: ManifestBackendGroup.Database | ManifestBackendGroup.Network,

@@ -5,6 +5,7 @@ Object type for the manifest.
 # Standard library imports
 from enum import Enum
 from typing import Any, Set
+from pydantic import computed_field
 
 
 class ManifestObjectType(Enum):
@@ -36,6 +37,7 @@ class ManifestObjectType(Enum):
         return not self.__eq__(other)
     
     def canContain(self, other: "ManifestObjectType") -> bool:
+        """Check if this object type can contain another object type."""
         if ManifestObjectType._containment_matrix is None:
             raise RuntimeError("ManifestObjectType._containment_matrix is not initialized")
         if self not in ManifestObjectType._containment_matrix:
@@ -45,9 +47,13 @@ class ManifestObjectType(Enum):
         return True
     
     def canBeContainedIn(self, other: "ManifestObjectType") -> bool:
+        """Check if this object type can be contained in another object type."""
         return other.canContain(self)
     
+    @computed_field
+    @property
     def possibleChildren(self) -> Set["ManifestObjectType"]:
+        """Get the set of object types that can be children of this type."""
         if ManifestObjectType._containment_matrix is None:
             raise RuntimeError("ManifestObjectType._containment_matrix is not initialized")
         if self not in ManifestObjectType._containment_matrix:

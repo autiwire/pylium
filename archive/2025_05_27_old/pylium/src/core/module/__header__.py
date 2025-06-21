@@ -21,7 +21,7 @@ class Module(_ModuleBase):
         _ModuleBase.Dependency(name="pydantic", type=_ModuleBase.Dependency.Type.PIP, version="2.10.2"),
     ]
 
-from pylium import __project__
+from pylium import __project_manifest__
 from pylium.core.header import Header
 
 class Module2(Header):
@@ -39,10 +39,10 @@ class Module2(Header):
         description="Module2",
         status=Header.Manifest.Status.Development,
         dependencies=[],
-        authors=__project__.__manifest__.authors,
-        maintainers=__project__.__manifest__.maintainers,
-        copyright=__project__.__manifest__.copyright,
-        license=__project__.__manifest__.license,
+        authors=__project_manifest__.__manifest__.authors,
+        maintainers=__project_manifest__.__manifest__.maintainers,
+        copyright=__project_manifest__.__manifest__.copyright,
+        license=__project_manifest__.__manifest__.license,
         changelog=[],
     )
     

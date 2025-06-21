@@ -1,18 +1,20 @@
 """
-Base class for all manifest values.
+Base value type for the manifest system.
 """
 
 # Pylium imports
 from .xobject import XObject
 
-# Built-in imports
-from typing import ClassVar
+# Standard library imports
 import datetime
 
+class ManifestValueTypes:
+    """Type definitions for manifest values."""
+    Date = datetime.date
 
-class ManifestValue(object):
-    """Base marker class for various manifest data structures."""
-    Date: ClassVar[type] = datetime.date
-
+class ManifestValue(XObject, ManifestValueTypes):
+    """Base class for manifest values with common type definitions."""
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+

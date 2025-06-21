@@ -5,6 +5,7 @@ Thread safety type for the manifest.
 # Standard library imports
 from enum import Enum
 from typing import Any
+from pydantic import computed_field
 
 class ManifestThreadSafety(Enum):
     Unsafe     = "unsafe"
@@ -30,8 +31,10 @@ class ManifestThreadSafety(Enum):
     def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
+    @computed_field
     @property
     def description(self) -> str:
+        """Get the description of the thread safety level."""
         return {
             ManifestThreadSafety.Unsafe: "No synchronization, may cause race conditions.",
             ManifestThreadSafety.Reentrant: "Reentrant for single thread recursion, not parallel-safe.",
