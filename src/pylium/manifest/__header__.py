@@ -17,7 +17,7 @@ _manifest_core_authors = Manifest.AuthorList(authors=[
         name="Rouven Raudzus", 
         email="raudzus@autiwire.org", 
         company="AutiWire GmbH", 
-        since_version="0.0.0", 
+        since_version=Manifest.Version("0.0.0"), 
         since_date=Manifest.Date(2025,5,10)
     )
 ])    
@@ -36,7 +36,7 @@ __root_manifest__ = RootManifest(
     authors=_manifest_core_authors,
     maintainers=_manifest_core_maintainers,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,6,16), author=_manifest_core_authors.rraudzus),
-    license=Manifest.Licenses.Apache2,
+    license=Manifest.Licenses.NoLicense,
     changelog=[
         Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025,6,16), author=_manifest_core_authors.rraudzus, 
                             notes=["Initial release"]),
@@ -52,11 +52,14 @@ __manifest__ = Manifest(
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     aiAccessLevel=Manifest.AIAccessLevel.Read,
-    dependencies=[ Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME) ],
+    dependencies=[ 
+        Manifest.Dependency(name="packaging", version=Manifest.Version("25.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME),
+        Manifest.Dependency(name="pydantic", version=Manifest.Version("2.11.4"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME)
+    ],
     authors=_manifest_core_authors,
     maintainers=_manifest_core_maintainers,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=_manifest_core_authors.rraudzus),
-    license=Manifest.Licenses.Apache2,
+    license=Manifest.Licenses.NoLicense,
     changelog=[
         Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025,5,18), author=_manifest_core_authors.rraudzus, 
                             notes=["Initial release"]),
@@ -103,6 +106,12 @@ __manifest__ = Manifest(
         Manifest.Changelog(version=Manifest.Version("0.1.15"), date=Manifest.Date(2025,6,14), author=_manifest_core_authors.rraudzus,
                              notes=["Added documentation for function manifest patterns",
                                    "Added examples for both simple and implementation class function manifests"]),
+        Manifest.Changelog(version=Manifest.Version("0.1.16"), date=Manifest.Date(2025,6,20), author=_manifest_core_authors.rraudzus,
+                             notes=["Integrated Pydantic for enhanced type validation and serialization",
+                                   "Added proper Pydantic fields to all manifest types",
+                                   "Converted Version type to use Pydantic validation",
+                                   "Updated dependency types to use Pydantic fields",
+                                   "Enhanced type safety across the manifest system"]),
     ]
 )
 
@@ -129,6 +138,10 @@ Manifest.__manifest__ = __manifest__.createChild(
         Manifest.Changelog(version=Manifest.Version("0.1.5"), date=Manifest.Date(2025,6,20), author=_manifest_core_authors.rraudzus,
                           notes=["Added dependency category to manifest",
                                  "Added dependency direction to manifest"]),
+        Manifest.Changelog(version=Manifest.Version("0.1.6"), date=Manifest.Date(2025,6,20), author=_manifest_core_authors.rraudzus,
+                          notes=["Integrated Pydantic model system",
+                                 "Enhanced field validation and type safety",
+                                 "Added proper serialization support"]),
     ]
 )
 

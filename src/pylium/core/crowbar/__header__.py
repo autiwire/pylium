@@ -1,4 +1,4 @@
-from pylium.core import __manifest__ as __parent_manifest_
+from pylium.core import __manifest__ as __parent_manifest__
 from pylium.manifest import Manifest
 from pylium.core.header import Header, classProperty, dlock
 from .data import DependencyInfo, ConflictInfo, DependencyStats, DependencyAnalysis
@@ -8,25 +8,25 @@ from abc import abstractmethod
 from typing import Type, Optional, Dict, List, Union
 import packaging.version
 
-__manifest__ : Manifest = __parent_manifest_.createChild(
+__manifest__ : Manifest = __parent_manifest__.createChild(
     location=Manifest.Location(module=__name__, classname=None), 
     description="Installer and package management system for Pylium",
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     dependencies=[
-        Manifest.Dependency(name="pip", version="25.3.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="setuptools", version="69.0.3", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="setuptools-scm", version="8.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="wheel", version="0.42.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME),
-        Manifest.Dependency(name="tomli-w", version="1.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME)
+        Manifest.Dependency(name="pip", version=Manifest.Version("25.3.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="setuptools", version=Manifest.Version("69.0.3"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="setuptools-scm", version=Manifest.Version("8.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="wheel", version=Manifest.Version("0.42.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="packaging", version=Manifest.Version("25.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME),
+        Manifest.Dependency(name="tomli-w", version=Manifest.Version("1.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME)
                     ],
     changelog=[
-        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16), 
-                           author=__parent_manifest_.authors.rraudzus,
+        Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025, 6, 16), 
+                           author=__parent_manifest__.authors.rraudzus,
                            notes=["Initial definition of pylium.crowbar package manifest."]),
-        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 6, 20),
-                         author=__parent_manifest_.authors.rraudzus,
+        Manifest.Changelog(version=Manifest.Version("0.1.1"), date=Manifest.Date(2025, 6, 20),
+                         author=__parent_manifest__.authors.rraudzus,
                          notes=["Moved packaging and tomli-w to RUNTIME category as they are needed for runtime operations."])
     ]
 )
@@ -50,11 +50,11 @@ class Crowbar(Header):
         frontend=Manifest.Frontend.CLI,
         dependencies=[],
         changelog=[
-            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,16), author=__parent_manifest_.authors.rraudzus,
+            Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025,6,16), author=__parent_manifest__.authors.rraudzus,
                                notes=["Initial implementation of the Crowbar installer",
                                       "Added basic dependency management",
                                       "Support for pip and system dependencies"]),
-            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025,6,20), author=__parent_manifest_.authors.rraudzus,
+            Manifest.Changelog(version=Manifest.Version("0.1.1"), date=Manifest.Date(2025,6,20), author=__parent_manifest__.authors.rraudzus,
                                notes=["Fixed list_dependencies function routing",
                                       "Improved CLI integration with proper function binding",
                                       "Enhanced stability and reliability of dependency listing"])
@@ -118,11 +118,11 @@ class Crowbar(Header):
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     changelog=[
-        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 16),
-                           author=__parent_manifest_.authors.rraudzus,
+        Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025, 6, 16),
+                           author=__parent_manifest__.authors.rraudzus,
                            notes=["Added list_dependencies function to list the dependencies of the current package"]),
-        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 6, 20),
-                           author=__parent_manifest_.authors.rraudzus,
+        Manifest.Changelog(version=Manifest.Version("0.1.1"), date=Manifest.Date(2025, 6, 20),
+                           author=__parent_manifest__.authors.rraudzus,
                            notes=["Enhanced dependency listing with beautiful tree output",
                                   "Added type and category filtering",
                                   "Added statistics and summary information",
@@ -421,12 +421,12 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     changelog=[
-        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 20),
-                         author=__parent_manifest_.authors.rraudzus,
+        Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025, 6, 20),
+                         author=__parent_manifest__.authors.rraudzus,
                          notes=["Added pyproject_update function to update dependencies in pyproject.toml",
                                "Automatically uses highest version when conflicts exist"]),
-        Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 6, 20),
-                         author=__parent_manifest_.authors.rraudzus,
+        Manifest.Changelog(version=Manifest.Version("0.1.1"), date=Manifest.Date(2025, 6, 20),
+                         author=__parent_manifest__.authors.rraudzus,
                          notes=["Added --dry-run flag to preview changes without writing"])
     ]
 ))

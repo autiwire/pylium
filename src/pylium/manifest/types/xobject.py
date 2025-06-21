@@ -2,13 +2,8 @@
 Generic Base class for pylium objects.
 """
 
-# Built-in imports
-from typing import List, Optional
-from datetime import date
-
 # External imports
-from pydantic import BaseModel, Field, field_validator
-
+from pydantic import BaseModel
 
 
 class XObject(BaseModel):

@@ -5,6 +5,8 @@ Object type for the manifest.
 # Standard library imports
 from enum import Enum
 from typing import Any, Set
+
+# External imports
 from pydantic import computed_field
 
 

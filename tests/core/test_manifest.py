@@ -22,8 +22,8 @@ from pylium.core.manifest import (
 
 # Dummy author data for reuse in tests
 # Mirroring structure of _manifest_core_authors for consistency in tests
-dummy_author_r = ManifestAuthor(tag="rraudzus", name="Rouven Raudzus", email="dev@example.com", company="TestCo", since_version="0.1.0", since_date=datetime.date(2023, 1, 1))
-dummy_author_j = ManifestAuthor(tag="jdoe", name="Jane Doe", email="jane@example.com", company="TestCo", since_version="0.1.0", since_date=datetime.date(2023, 1, 1))
+dummy_author_r = ManifestAuthor(tag="rraudzus", name="Rouven Raudzus", email="dev@example.com", company="TestCo", since_version=Manifest.Version("0.1.0"), since_date=datetime.date(2023, 1, 1))
+dummy_author_j = ManifestAuthor(tag="jdoe", name="Jane Doe", email="jane@example.com", company="TestCo", since_version=Manifest.Version("0.1.0"), since_date=datetime.date(2023, 1, 1))
 dummy_authors_list = ManifestAuthorList([dummy_author_r, dummy_author_j])
 
 dummy_maintainer_r = ManifestAuthor(tag="rraudzus_m", name="Rouven Raudzus Maintainer", email="maint@example.com", company="TestCo")
@@ -78,14 +78,14 @@ class TestManifestSystem(unittest.TestCase):
             ManifestLocation(module="non_existent_module_for_pylium_testing")
 
     def test_manifest_dependency(self):
-        dep_pip = ManifestDependency(name="requests", version="2.25.1", type=ManifestDependencyType.PIP)
+        dep_pip = ManifestDependency(name="requests", version=Manifest.Version("2.25.1"), type=ManifestDependencyType.PIP)
         self.assertEqual(dep_pip.name, "requests")
         self.assertEqual(dep_pip.version, "2.25.1")
         self.assertEqual(dep_pip.type, ManifestDependencyType.PIP)
         self.assertEqual(str(dep_pip), "requests (2.25.1)")
         self.assertEqual(repr(dep_pip), "requests (2.25.1)")
 
-        dep_pylium = ManifestDependency(name="pylium.core", version="0.1.0", type=ManifestDependencyType.PYLIUM)
+        dep_pylium = ManifestDependency(name="pylium.core", version=Manifest.Version("0.1.0"), type=ManifestDependencyType.PYLIUM)
         self.assertEqual(dep_pylium.type, ManifestDependencyType.PYLIUM)
         self.assertEqual(str(ManifestDependencyType.PYLIUM), "pylium")
 
@@ -118,7 +118,7 @@ class TestManifestSystem(unittest.TestCase):
         self.assertIn("Jane Doe", authors_from_iter)
 
     def test_manifest_changelog(self):
-        cl_entry = ManifestChangelog(version="1.0.0", date=datetime.date(2023,1,1), author=dummy_author_r, notes=["Initial release", "Added feature X"])
+        cl_entry = ManifestChangelog(version=Manifest.Version("1.0.0"), date=datetime.date(2023,1,1), author=dummy_author_r, notes=["Initial release", "Added feature X"])
         self.assertEqual(cl_entry.version, "1.0.0")
         self.assertEqual(len(cl_entry.notes), 2)
         self.assertIn("Initial release", str(cl_entry))
@@ -216,10 +216,10 @@ class TestManifestSystem(unittest.TestCase):
 
     def test_manifest_properties(self):
         loc = ManifestLocation(module=__name__)
-        cl1 = ManifestChangelog(version="0.1.0", date=datetime.date(2023,1,1), author=dummy_author_r, notes=["First"])
-        cl2 = ManifestChangelog(version="0.2.0", date=datetime.date(2023,2,1), author=dummy_author_j, notes=["Second"])
+        cl1 = ManifestChangelog(version=Manifest.Version("0.1.0"), date=datetime.date(2023,1,1), author=dummy_author_r, notes=["First"])
+        cl2 = ManifestChangelog(version=Manifest.Version("0.2.0"), date=datetime.date(2023,2,1), author=dummy_author_j, notes=["Second"])
         cl_no_ver = ManifestChangelog(date=datetime.date(2023,3,1))
-        cl_no_date = ManifestChangelog(version="0.3.0")
+        cl_no_date = ManifestChangelog(version=Manifest.Version("0.3.0"))
 
         m = Manifest(location=loc, authors=dummy_authors_list, changelog=[cl1, cl2, cl_no_ver, cl_no_date])
         self.assertEqual(str(m.version), "0.3.0") # Latest valid version

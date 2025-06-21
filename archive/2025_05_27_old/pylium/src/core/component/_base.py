@@ -12,10 +12,10 @@ class ComponentBaseModule(Module):
     Base module for Pylium components
     """
     authors: ClassVar[List[Module.AuthorInfo]] = [
-        Module.AuthorInfo(name="Rouven Raudzus", email="raudzus@autiwire.org", since_version="0.0.1", since_date=datetime.date(2025, 5, 10))
+        Module.AuthorInfo(name="Rouven Raudzus", email="raudzus@autiwire.org", since_version=Manifest.Version("0.0.1"), since_date=datetime.date(2025, 5, 10))
     ]
     changelog: ClassVar[List[Module.ChangelogEntry]] = [
-        Module.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=datetime.date(2025, 5, 10)),
+        Module.ChangelogEntry(version=Manifest.Version("0.0.1"), notes=["Initial release"], date=datetime.date(2025, 5, 10)),
     ]
 
 logger = ComponentBaseModule.logger

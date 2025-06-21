@@ -62,7 +62,7 @@ class CLIRenderer:
 
         for child in self._manifest.children:
             #print(f"  CHILD: {child.location.fqnShort} {child.objectType.name.upper()} {self._manifest.objectType.name.upper()}")
-            if child.objectType not in self._manifest.objectType.possibleChildren():
+            if child.objectType not in self._manifest.objectType.possibleChildren:
                 print(f"  SKIPPING CHILD: {child.location.fqnShort} ({child.objectType.name.upper()} not allowed in {self._manifest.objectType.name.upper()})")
                 continue
             

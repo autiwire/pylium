@@ -1,18 +1,18 @@
-from pylium.core import __manifest__ as __parent_manifest_
+from pylium.core import __manifest__ as __parent_manifest__
 from pylium.core.header import Manifest, Header, dlock, classProperty
 
 from abc import abstractmethod
 from typing import Optional, Any, Dict, List, ClassVar
 import threading
 
-__manifest__ : Manifest = __parent_manifest_.createChild(
+__manifest__ : Manifest = __parent_manifest__.createChild(
     location=Manifest.Location(module=__name__, classname=None), 
     description="Frontend abstraction layer for multiple interface types (CLI, Web, API, etc.)",
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,  
     changelog=[
-        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 8), 
-                           author=__parent_manifest_.authors.rraudzus,
+        Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025, 6, 8), 
+                           author=__parent_manifest__.authors.rraudzus,
                            notes=["Initial definition of pylium.core.frontend package manifest.",
                                   "Established foundation for multi-frontend support architecture"]),
     ]
@@ -35,13 +35,13 @@ class Frontend(Header):
         status=Manifest.Status.Development,
         frontend=Manifest.Frontend.NoFrontend,  
         changelog=[
-            Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 6, 8),
-                               author=__parent_manifest_.authors.rraudzus,
+            Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025, 6, 8),
+                               author=__parent_manifest__.authors.rraudzus,
                                notes=["Initial implementation of Frontend base class",
                                       "Defined abstract interface for frontend implementations",
                                       "Established foundation for multi-frontend architecture"]),
-            Manifest.Changelog(version="0.1.1", date=Manifest.Date(2025, 6, 20),
-                               author=__parent_manifest_.authors.rraudzus,
+            Manifest.Changelog(version=Manifest.Version("0.1.1"), date=Manifest.Date(2025, 6, 20),
+                               author=__parent_manifest__.authors.rraudzus,
                                notes=["Cleaned up debug output for better readability",
                                       "Improved frontend registration logging",
                                       "Enhanced code clarity and maintainability"])

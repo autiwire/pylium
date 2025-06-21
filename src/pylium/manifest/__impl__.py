@@ -14,7 +14,7 @@ import sys
 from packaging.version import Version 
 from pydantic import Field, computed_field, ConfigDict
 
-
+# Logging
 from logging import getLogger
 logger = getLogger(__name__)
 
@@ -55,15 +55,15 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
     manifest for the project.
     
     In the module "a.b", import the manifest from the root "a" and set
-    __parent_manifest_ = __manifest__, this marks the parent manifest for the module.
-    Create the __manifest__ for the module by calling __parent_manifest_.createChild(...),
+    __parent_manifest__ = __manifest__, this marks the parent manifest for the module.
+    Create the __manifest__ for the module by calling __parent_manifest__.createChild(...),
     this creates a child manifest for the module.
 
     In the module "a.b.c", create the __manifest__ for the module by calling,
-    do as above, __parent_manifest_ = __manifest__, __manifest__ = __parent_manifest_.createChild(...), 
+    do as above, __parent_manifest__ = __manifest__, __manifest__ = __parent_manifest__.createChild(...), 
     where parent is the manifest from the module "a.b".
 
-    Define the class "D" with the manifest __manifest__ = __parent_manifest_.createChild(...),
+    Define the class "D" with the manifest __manifest__ = __parent_manifest__.createChild(...),
     where parent is the manifest from the module "a.b.c".
 
     For functions, use the @Manifest.func decorator to attach a manifest:
@@ -271,10 +271,10 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
                 return parent
             
             # For module manifests, parent is the parent module
-            # First try to catch __parent_manifest_ in the module
+            # First try to catch __parent_manifest__ in the module
             try:
                 parent = importlib.import_module(self.location.module)
-                return getattr(parent, "__parent_manifest_", None)
+                return getattr(parent, "__parent_manifest__", None)
             except ImportError:
                 pass
 

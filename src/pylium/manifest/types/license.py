@@ -7,8 +7,8 @@ from .value import ManifestValue
 from .author import ManifestAuthor
 
 # Standard library imports
-from typing import Optional, List, Any, Generator
-from datetime import date
+from typing import Optional, List, Generator
+
 
 class ManifestCopyright(ManifestValue):
     date: Optional[ManifestValue.Date] = None

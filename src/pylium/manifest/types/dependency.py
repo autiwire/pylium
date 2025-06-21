@@ -4,10 +4,13 @@ Types for the manifest.
 
 # Pylium imports
 from .value import ManifestValue
+from .version import ManifestVersion
 
 # Standard library imports
 from typing import Any, Optional
 from enum import Enum
+
+# External imports
 from pydantic import computed_field, Field
 
 
@@ -123,7 +126,7 @@ class ManifestDependency(ManifestValue, ManifestDependencyTypes):
         description="Type of the dependency"
     )
     name: str = Field(description="Name of the dependency")
-    version: str = Field(description="Version of the dependency")
+    version: ManifestVersion = Field(description="Version of the dependency")
     source: Optional[str] = Field(
         default=None,
         description="Source URL or path for the dependency"

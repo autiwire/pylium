@@ -75,7 +75,7 @@ __manifest__ = Manifest(
         Manifest.Dependency(type=Manifest.Dependency.Type.PIP, name="fire", version=">=0.7.0"),
     ],
     changelog=[
-        Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025, 5, 29), author=_project_authors.rr, notes=["Initial release of my impressive AI module."])
+        Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025, 5, 29), author=_project_authors.rr, notes=["Initial release of my impressive AI module."])
     ],
     threadSafety=Manifest.ThreadSafety.ThreadSafe,
     accessMode=Manifest.AccessMode.Hybrid,

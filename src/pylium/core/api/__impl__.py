@@ -25,7 +25,7 @@ class APIImpl(API):
         self._app = FastAPI(
             title=self._target_manifest.location.fqnShort,
             description=self._target_manifest.__doc__ or "Pylium API",
-            version="0.1.0"
+            version=Manifest.Version("0.1.0")
         )
 
     def render(self) -> FastAPI:

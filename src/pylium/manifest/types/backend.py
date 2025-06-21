@@ -4,7 +4,8 @@ Backend type for the manifest.
 
 # Standard library imports
 from enum import Flag
-from typing import Any
+
+# External imports
 from pydantic import computed_field
 
 

@@ -4,19 +4,23 @@ Author type for the manifest.
 
 # Pylium imports
 from .value import ManifestValue
+from .version import ManifestVersion
 
 # Built-in imports
-from typing import Optional, List, Generator
+from typing import Optional, List, Generator, Sequence
+
+# External imports
+from pydantic import Field
 
 
 class ManifestAuthor(ManifestValue):
     """Author information for manifests."""
-    tag: str
-    name: str
-    email: Optional[str] = None
-    company: Optional[str] = None
-    since_version: Optional[str] = None
-    since_date: Optional[ManifestValue.Date] = None
+    tag: str = Field(description="Unique tag for the author")
+    name: str = Field(description="Full name of the author")
+    email: Optional[str] = Field(default=None, description="Email address")
+    company: Optional[str] = Field(default=None, description="Company affiliation")
+    since_version: Optional[ManifestVersion] = Field(default=None, description="Version when author joined")
+    since_date: Optional[ManifestValue.Date] = Field(default=None, description="Date when author joined")
 
     def since(self, version: str, date: ManifestValue.Date) -> "ManifestAuthor":
         """Return a copy of the author with the since version and date."""
@@ -46,7 +50,12 @@ class ManifestAuthor(ManifestValue):
 
 class ManifestAuthorList(ManifestValue):
     """List of authors with attribute-based access."""
-    authors: List[ManifestAuthor]
+    authors: List[ManifestAuthor] = Field(default_factory=list, description="List of authors")
+
+    @classmethod
+    def create(cls, authors: Sequence[ManifestAuthor]) -> "ManifestAuthorList":
+        """Create a new author list from a sequence of authors."""
+        return cls(authors=list(authors))
 
     def __getattr__(self, tag: str) -> ManifestAuthor:        
         for author in self.authors:

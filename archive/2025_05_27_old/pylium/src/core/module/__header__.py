@@ -12,13 +12,13 @@ class Module(_ModuleBase):
     """
     type: ClassVar[_ModuleBase.Type] = _ModuleBase.Type.MODULE
     authors: ClassVar[List[_ModuleBase.AuthorInfo]] = [
-        _ModuleBase.AuthorInfo(name="Rouven Raudzus", email="raudzus@autiwire.org", since_version="0.0.1", since_date=_ModuleBase.Date(2025, 5, 10))
+        _ModuleBase.AuthorInfo(name="Rouven Raudzus", email="raudzus@autiwire.org", since_version=Manifest.Version("0.0.1"), since_date=_ModuleBase.Date(2025, 5, 10))
     ]
     changelog: ClassVar[List[_ModuleBase.ChangelogEntry]] = [
-        _ModuleBase.ChangelogEntry(version="0.0.1", notes=["Initial release"], date=_ModuleBase.Date(2025, 5, 10))
+        _ModuleBase.ChangelogEntry(version=Manifest.Version("0.0.1"), notes=["Initial release"], date=_ModuleBase.Date(2025, 5, 10))
     ]
     dependencies: ClassVar[List[_ModuleBase.Dependency]] = [
-        _ModuleBase.Dependency(name="pydantic", type=_ModuleBase.Dependency.Type.PIP, version="2.10.2"),
+        _ModuleBase.Dependency(name="pydantic", type=_ModuleBase.Dependency.Type.PIP, version=Manifest.Version("2.10.2")),
     ]
 
 from pylium import __project_manifest__
