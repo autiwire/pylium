@@ -34,7 +34,7 @@ __root__ = RootManifest(
     authors=_manifest_core_authors,
     maintainers=_manifest_core_maintainers,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,6,16), author=_manifest_core_authors.rraudzus),
-    license=Manifest.licenses.Apache2,
+    license=Manifest.Licenses.Apache2,
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,6,16), author=_manifest_core_authors.rraudzus, 
                             notes=["Initial release"]),
@@ -50,11 +50,11 @@ __manifest__ = Manifest(
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     aiAccessLevel=Manifest.AIAccessLevel.Read,
-    dependencies=[ Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.DependencyType.PIP, category=Manifest.Dependency.Category.RUNTIME) ],
+    dependencies=[ Manifest.Dependency(name="packaging", version="25.0.0", type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME) ],
     authors=_manifest_core_authors,
     maintainers=_manifest_core_maintainers,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=_manifest_core_authors.rraudzus),
-    license=Manifest.licenses.Apache2,
+    license=Manifest.Licenses.Apache2,
     changelog=[
         Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=_manifest_core_authors.rraudzus, 
                             notes=["Initial release"]),

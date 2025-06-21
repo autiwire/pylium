@@ -1,4 +1,12 @@
-from ._types import ManifestValue, ManifestAuthor
+"""
+License type for the manifest.
+"""
+
+# Pylium imports
+from .value import ManifestValue
+from .author import ManifestAuthor
+
+# Standard library imports
 from typing import Optional, List, Any, Generator
 
 class ManifestCopyright(ManifestValue):
@@ -62,7 +70,7 @@ class ManifestLicenseList(ManifestValue):
     
 
     # Default licenses to pick from
-licenses = ManifestLicenseList([
+ManifestLicenses = ManifestLicenseList([
     ManifestLicense(tag="MIT", spdx="MIT", name="MIT License", url="https://opensource.org/licenses/MIT"),
     ManifestLicense(tag="Apache2", spdx="Apache-2.0", name="Apache License 2.0", url="https://opensource.org/licenses/Apache-2.0"),
     ManifestLicense(tag="GPL3only", spdx="GPL-3.0-only", name="GNU General Public License v3.0 only", url="https://www.gnu.org/licenses/gpl-3.0.en.html"),

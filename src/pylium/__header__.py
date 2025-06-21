@@ -24,7 +24,7 @@ __manifest__ : Manifest = Manifest.__root__.createChild(
     authors=_project_core_authors,
     maintainers=_project_core_maintainers,
     copyright=Manifest.Copyright(date=Manifest.Date(2025,5,18), author=_project_core_authors.rraudzus),
-    license=Manifest.licenses.NoLicense,
+    license=Manifest.Licenses.NoLicense,
     frontend=Manifest.Frontend.CLI,
     changelog=[ Manifest.Changelog(version="0.1.0", date=Manifest.Date(2025,5,18), author=_project_core_authors.rraudzus, 
                                     notes=["Initial release"]),

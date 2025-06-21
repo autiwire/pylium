@@ -1,16 +1,15 @@
-import datetime
-from typing import Optional, List, Any, Generator
-import importlib.util
-from pathlib import Path
+"""
+Location type for the manifest.
+"""
+
+# Pylium imports
+from .value import ManifestValue
+
+# Built-in imports
+from typing import Optional
+import importlib
 import inspect
-
-
-class ManifestValue(object):
-    """Base marker class for various manifest data structures."""
-    Date = datetime.date
-
-    def __init__(self):
-        pass
+from pathlib import Path
 
 
 class ManifestLocation(ManifestValue):
@@ -149,105 +148,3 @@ class ManifestLocation(ManifestValue):
             return False
         attr = inspect.getattr_static(cls, self.funcname, None)
         return isinstance(attr, staticmethod)
-
-class ManifestAuthor(ManifestValue):
-    def __init__(self, tag: str, name: str, email: Optional[str] = None, company: Optional[str] = None, since_version: Optional[str] = None, since_date: Optional[ManifestValue.Date] = None):    
-        self.tag = tag
-        self.name = name
-        self.email = email
-        self.company = company
-        self.since_version = since_version
-        self.since_date = since_date
-
-    def since(self, version: str, date: ManifestValue.Date) -> "ManifestAuthor":
-        # return a copy of the author with the since version and date
-        return ManifestAuthor(self.tag, self.name, self.email, self.company, version, date)
-    
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, ManifestAuthor):
-            return False
-        return self.tag == other.tag
-    
-    def __ne__(self, other: Any) -> bool:
-        return not self.__eq__(other)
-    
-    def __hash__(self) -> int:
-        return hash((self.tag))
-    
-    def __str__(self):
-        return f"{self.name} ({self.email}) {self.company} {self.since_version} {self.since_date}"
-
-    def __repr__(self):
-        return f"{self.name} ({self.email}) {self.company} [since: {self.since_version} @ {self.since_date}]"
-
-    
-class ManifestAuthorList(ManifestValue):
-    def __init__(self, authors: List[ManifestAuthor]):
-        self._authors = authors
-
-    def __getattr__(self, tag: str) -> ManifestAuthor:        
-        for author in self._authors:
-            if author.tag == tag:
-                return author
-        raise AttributeError(f"Author {tag} not found")
-
-    def __getitem__(self, index: int) -> ManifestAuthor:
-        return self._authors[index]
-
-    def __len__(self) -> int:
-        return len(self._authors)
-
-    def __str__(self):
-        return f"{self._authors}"
-    
-    def __repr__(self):
-        return f"{self._authors}"
-    
-    def __iter__(self) -> Generator[ManifestAuthor, None, None]:
-        return iter(self._authors)
-
-
-# After ManifestAuthorList definition but before Manifest class
-# Type alias for maintainers list - semantically different but technically the same
-ManifestMaintainerList = ManifestAuthorList
-ManifestContributorList = ManifestAuthorList
-
-
-class ManifestChangelog(ManifestValue):
-    def __init__(self, version: Optional[str] = None, date: Optional[ManifestValue.Date] = None, author: Optional[ManifestAuthor] = None, notes: Optional[List[str]] = None):
-        self.version = version
-        self.date = date
-        self.author = author
-        self.notes = notes if notes is not None else []
-
-    def __str__(self):
-        return f"{self.version} ({self.date}) {self.author} {self.notes}"
-    
-    def __repr__(self):
-        return f"{self.version} ({self.date}) {self.author} {self.notes}"
-    
-
-class ManifestDependency(ManifestValue):
-    from ._enums import ManifestDependencyType as Type
-    from ._enums import ManifestDependencyCategory as Category
-    from ._enums import ManifestDependencyDirection as Direction
-   
-    def __init__(self, name: str, version: str, type: Type = Type.PIP, source: str = None, category: Category = Category.AUTOMATIC, direction: Direction = Direction.MINIMUM):
-        self.type = type
-        self.name = name
-        self.version = version
-        self.source = source
-        self.category = category
-        self.direction = direction
-
-    def __str__(self):
-        if self.source is not None:
-            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] @ {self.source} [{self.category}]"
-        else:
-            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] [{self.category}]"
-    
-    def __repr__(self):
-        if self.source is not None:
-            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] @ {self.source} [{self.category}]"
-        else:
-            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] [{self.category}]"

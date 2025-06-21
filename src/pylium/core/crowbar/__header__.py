@@ -1,10 +1,11 @@
 from pylium.core import __manifest__ as __parent__
 from pylium.manifest import Manifest
 from pylium.core.header import Header, classProperty, dlock
+from .data import DependencyInfo, ConflictInfo, DependencyStats, DependencyAnalysis
 
 import threading
 from abc import abstractmethod
-from typing import Type, Optional, Dict, List
+from typing import Type, Optional, Dict, List, Union
 import packaging.version
 
 __manifest__ : Manifest = __parent__.createChild(
@@ -310,14 +311,27 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
     if conflict_count > 0:
         print(f"   • Version Conflicts: {conflict_count} 🚨")
     
-    # Count by category
-    category_counts = {}
+    # Collect statistics
+    stats = DependencyStats(
+        total_dependencies=sum(len(deps) for deps in dependencies.values()),
+        total_modules=len(dependencies),
+        conflicts=len(conflicts),
+        by_category={},  # Initialize empty dicts
+        by_type={}
+    )
+    
+    # Count by category and type
     for module_deps in dependencies.values():
         for dep in module_deps:
+            # Category stats
             category = getattr(dep, 'category', None)
             if category:
                 category_name = category.name
-                category_counts[category_name] = category_counts.get(category_name, 0) + 1
+                stats.by_category[category_name] = stats.by_category.get(category_name, 0) + 1
+            
+            # Type stats
+            type_name = dep.type.name
+            stats.by_type[type_name] = stats.by_type.get(type_name, 0) + 1
     
     if category_counts:
         print(f"   • By Category:")
@@ -558,5 +572,149 @@ def pyproject_update(path: str = "pyproject.toml", dry_run: bool = False):
     except Exception as e:
         print(f"❌ Error writing {path}: {e}")
         return
+
+
+@Manifest.func(__manifest__.createChild(
+    location=None,
+    description="Analyze dependencies and return structured data",
+    status=Manifest.Status.Development,
+    frontend=Manifest.Frontend.CLI,
+))
+def list_dependencies2(path: str = "", recursive: bool = True, type_filter: str = None, category_filter: str = None) -> Union[Dict, DependencyAnalysis]:
+    """
+    Analyze dependencies and return structured data that can be used by both CLI and API.
+    
+    Args:
+        path: The path to analyze dependencies for
+        recursive: Whether to include recursive dependencies
+        type_filter: Filter by dependency type
+        category_filter: Filter by dependency category
+    
+    Returns:
+        DependencyAnalysis object containing:
+        - dependencies: Dict[str, List[DependencyInfo]] - All dependencies per module
+        - conflicts: List[ConflictInfo] - All detected conflicts
+        - stats: DependencyStats - Statistics about dependencies
+        
+        For backward compatibility, also returns a dict format when needed
+    """
+    dependencies = Crowbar.getDependencies(path, recursive, type_filter, category_filter)
+    
+    # Collect all versions of each package
+    dep_versions = {}  # name -> [(version, direction, module)]
+    for module, module_deps in dependencies.items():
+        for dep in module_deps:
+            if dep.type.name == "PIP":
+                dep_versions.setdefault(dep.name, []).append((dep.version, dep.direction, module))
+    
+    # Analyze conflicts
+    conflicts = []
+    for pkg_name, versions in dep_versions.items():
+        if len(versions) > 1:
+            exact_versions = [(v, m) for v, d, m in versions if d == Manifest.Dependency.Direction.EXACT]
+            min_versions = [(v, m) for v, d, m in versions if d == Manifest.Dependency.Direction.MINIMUM]
+            max_versions = [(v, m) for v, d, m in versions if d == Manifest.Dependency.Direction.MAXIMUM]
+            
+            # Case 1: Multiple different EXACT versions
+            if len(exact_versions) > 1:
+                unique_versions = set(v for v, _ in exact_versions)
+                if len(unique_versions) > 1:
+                    conflicts.append(ConflictInfo(
+                        type="multiple_exact",
+                        package=pkg_name,
+                        severity="error",
+                        versions=[{"version": v, "module": m} for v, m in exact_versions]
+                    ))
+            
+            # Case 2: Single EXACT version with incompatible constraints
+            if len(exact_versions) == 1:
+                exact_ver, exact_module = exact_versions[0]
+                exact_version = packaging.version.parse(exact_ver)
+                
+                for min_ver, min_module in min_versions:
+                    min_version = packaging.version.parse(min_ver)
+                    if exact_version < min_version:
+                        conflicts.append(ConflictInfo(
+                            type="exact_below_minimum",
+                            package=pkg_name,
+                            severity="error",
+                            exact={"version": exact_ver, "module": exact_module},
+                            minimum={"version": min_ver, "module": min_module}
+                        ))
+                
+                for max_ver, max_module in max_versions:
+                    max_version = packaging.version.parse(max_ver)
+                    if exact_version > max_version:
+                        conflicts.append(ConflictInfo(
+                            type="exact_above_maximum",
+                            package=pkg_name,
+                            severity="error",
+                            exact={"version": exact_ver, "module": exact_module},
+                            maximum={"version": max_ver, "module": max_module}
+                        ))
+            
+            # Case 3: MIN/MAX constraints with no possible version
+            if min_versions and max_versions:
+                highest_min = max([(packaging.version.parse(v), v, m) for v, m in min_versions], key=lambda x: x[0])
+                lowest_max = min([(packaging.version.parse(v), v, m) for v, m in max_versions], key=lambda x: x[0])
+                
+                if highest_min[0] > lowest_max[0]:
+                    conflicts.append(ConflictInfo(
+                        type="no_valid_version",
+                        package=pkg_name,
+                        severity="error",
+                        minimum={"version": highest_min[1], "module": highest_min[2]},
+                        maximum={"version": lowest_max[1], "module": lowest_max[2]}
+                    ))
+    
+    # Collect statistics
+    stats = DependencyStats(
+        total_dependencies=sum(len(deps) for deps in dependencies.values()),
+        total_modules=len(dependencies),
+        conflicts=len(conflicts),
+        by_category={},  # Initialize empty dicts
+        by_type={}
+    )
+    
+    # Count by category and type
+    for module_deps in dependencies.values():
+        for dep in module_deps:
+            # Category stats
+            category = getattr(dep, 'category', None)
+            if category:
+                category_name = category.name
+                stats.by_category[category_name] = stats.by_category.get(category_name, 0) + 1
+            
+            # Type stats
+            type_name = dep.type.name
+            stats.by_type[type_name] = stats.by_type.get(type_name, 0) + 1
+    
+    # Convert dependencies to structured format
+    deps_structured = {}
+    for module, deps in dependencies.items():
+        deps_structured[module] = [DependencyInfo.from_manifest_dependency(dep) for dep in deps]
+    
+    # Create the analysis object
+    analysis = DependencyAnalysis(
+        dependencies=deps_structured,
+        conflicts=conflicts,
+        stats=stats
+    )
+    
+    # Print the analysis as json string
+    print(analysis)
+    print("--------------------------------")
+    
+    import json
+    json_str = json.dumps(analysis.to_dict(), indent=4)
+    
+    
+    # deserialize the json string back to a DependencyAnalysis object
+    analysis = DependencyAnalysis.from_dict(json.loads(json_str))
+    print(analysis)
+    print("--------------------------------")
+
+    # For backward compatibility, return dict format
+    return analysis.to_dict()
 
 

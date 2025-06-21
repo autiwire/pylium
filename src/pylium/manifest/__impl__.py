@@ -88,32 +88,29 @@ class Manifest:
     __manifest__: ClassVar["Manifest"] = None
     __root__: ClassVar["Manifest"] = None
 
-    from ._types import ManifestValue as Value
-    from ._types import ManifestLocation as Location
-    from ._types import ManifestAuthor as Author
-    from ._types import ManifestAuthorList as AuthorList
-    from ._types import ManifestMaintainerList as MaintainerList
-    from ._types import ManifestContributorList as ContributorList
-    from ._types import ManifestChangelog as Changelog
-    from ._types import ManifestDependency as Dependency
+    from .types import ManifestValue as Value
+    from .types import ManifestLocation as Location
+    from .types import ManifestAuthor as Author
+    from .types import ManifestAuthorList as AuthorList
+    from .types import ManifestMaintainerList as MaintainerList
+    from .types import ManifestContributorList as ContributorList
+    from .types import ManifestChangelog as Changelog
+    from .types import ManifestDependency as Dependency
     
-    from ._license import ManifestCopyright as Copyright
-    from ._license import ManifestLicense as License
-    from ._license import ManifestLicenseList as LicenseList
-    from ._license import licenses as licenses
+    from .types import ManifestCopyright as Copyright
+    from .types import ManifestLicense as License
+    from .types import ManifestLicenseList as LicenseList
+    from .types import ManifestLicenses as Licenses
 
-    from ._enums import ManifestObjectType as ObjectType
-    from ._enums import ManifestDependencyType as DependencyType
-    from ._enums import ManifestDependencyCategory as DependencyCategory
-    from ._enums import ManifestDependencyDirection as DependencyDirection
-    from ._enums import ManifestStatus as Status
-    from ._enums import ManifestAccessMode as AccessMode
-    from ._enums import ManifestThreadSafety as ThreadSafety
+    from .types import ManifestObjectType as ObjectType
+    from .types import ManifestStatus as Status
+    from .types import ManifestAccessMode as AccessMode
+    from .types import ManifestThreadSafety as ThreadSafety
 
-    from ._flags import ManifestFrontend as Frontend
-    from ._flags import ManifestBackend as Backend
-    from ._flags import ManifestBackendGroup as BackendGroup
-    from ._flags import ManifestAIAccessLevel as AIAccessLevel
+    from .types import ManifestFrontend as Frontend
+    from .types import ManifestBackend as Backend
+    from .types import ManifestBackendGroup as BackendGroup
+    from .types import ManifestAIAccessLevel as AIAccessLevel
 
     Date = Value.Date
 
@@ -195,7 +192,7 @@ class Manifest:
         self.authors = authors if authors is not None else Manifest.AuthorList([])
         self.maintainers = maintainers if maintainers is not None else self.authors # If maintainers not given, use authors
         self.copyright = copyright
-        self.license = license if license is not None else self.licenses.NoLicense # Default to NoLicense
+        self.license = license if license is not None else self.Licenses.NoLicense # Default to NoLicense
         self.status = status
         self.accessMode = accessMode
         self.threadSafety = threadSafety
