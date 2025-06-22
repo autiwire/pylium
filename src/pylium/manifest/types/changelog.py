@@ -8,7 +8,7 @@ from .author import ManifestAuthor
 from .version import ManifestVersion
 
 # Standard library imports
-from typing import List, Optional
+from typing import List, Optional, Any
 
 # External imports
 from pydantic import Field
@@ -30,3 +30,15 @@ class ManifestChangelog(ManifestValue):
     def __repr__(self) -> str:
         """Return a detailed string representation of the changelog entry."""
         return f"Changelog(version={self.version}, date={self.date}, author={self.author}, notes={self.notes})"
+    
+    def __hash__(self) -> int:
+        return hash((self.version, self.date, self.author, tuple(self.notes)))
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestChangelog):
+            return False
+        return (self.version == other.version and
+                self.date == other.date and
+                self.author == other.author and
+                self.notes == other.notes)
+       

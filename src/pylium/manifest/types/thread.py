@@ -9,7 +9,7 @@ from typing import Any
 # External imports
 from pydantic import computed_field
 
-class ManifestThreadSafety(Enum):
+class ManifestThreadSafety(str, Enum):
     Unsafe     = "unsafe"
     Reentrant  = "reentrant"
     ThreadSafe = "thread-safe"
@@ -30,9 +30,6 @@ class ManifestThreadSafety(Enum):
             return False
         return self.value == other.value
     
-    def __ne__(self, other: Any) -> bool:
-        return not self.__eq__(other)
-
     @computed_field
     @property
     def description(self) -> str:

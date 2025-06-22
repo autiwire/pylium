@@ -10,7 +10,7 @@ from typing import Any, Set
 from pydantic import computed_field
 
 
-class ManifestObjectType(Enum):
+class ManifestObjectType(str, Enum):
     """
     The type of object that the manifest is describing.
     """
@@ -34,9 +34,6 @@ class ManifestObjectType(Enum):
         if not isinstance(other, ManifestObjectType):
             return False
         return self.value == other.value
-    
-    def __ne__(self, other: Any) -> bool:
-        return not self.__eq__(other)
     
     def canContain(self, other: "ManifestObjectType") -> bool:
         """Check if this object type can contain another object type."""

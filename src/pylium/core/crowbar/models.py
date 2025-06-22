@@ -33,25 +33,3 @@ class DependencyAnalysis(BaseModel):
     conflicts: List[ConflictInfo]
     stats: DependencyStats
 
-    def to_dict(self) -> dict:
-        """Convert to a dictionary suitable for JSON serialization"""
-        return {
-            "dependencies": {
-                module: [dep.model_dump() for dep in deps]
-                for module, deps in self.dependencies.items()
-            },
-            "conflicts": [conflict.model_dump() for conflict in self.conflicts],
-            "stats": self.stats.model_dump()
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "DependencyAnalysis":
-        """Create from a dictionary (deserialization)"""
-        return cls(
-            dependencies={
-                module: [Manifest.Dependency(**dep) for dep in deps]
-                for module, deps in data["dependencies"].items()
-            },
-            conflicts=[ConflictInfo(**conflict) for conflict in data["conflicts"]],
-            stats=DependencyStats(**data["stats"])
-        ) 

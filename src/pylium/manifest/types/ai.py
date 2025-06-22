@@ -10,7 +10,7 @@ from enum import Flag
 # This is a hint for the AI to use the correct access level,
 # mainly used for coding assistance, not for security
 # It might work, but AI might completely ignore it
-class ManifestAIAccessLevel(Flag):
+class ManifestAIAccessLevel(str, Flag):
     NoAccess = 1 << 0
     Read = 1 << 1
     SuggestOnly = 1 << 2

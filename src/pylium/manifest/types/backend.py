@@ -4,12 +4,13 @@ Backend type for the manifest.
 
 # Standard library imports
 from enum import Flag
+from typing import Any
 
 # External imports
 from pydantic import computed_field
 
 
-class ManifestBackendGroup(Flag):
+class ManifestBackendGroup(str, Flag):
     NoBackendGroup = 0
     Database = 1 << 0
     File = 1 << 1
@@ -52,9 +53,17 @@ class ManifestBackendGroup(Flag):
 
         member_reprs = [f"{cls_name}.{m.name}" for m in decomposed_members]
         return " | ".join(member_reprs)
+    
+    def __hash__(self) -> int:
+        return hash(self.value)
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestBackendGroup):
+            return False
+        return self.value == other.value
 
 
-class ManifestBackend(Flag):
+class ManifestBackend(str, Flag):
     NoBackend       = 0
     SQLite          = 1 << 0
     Redis           = 1 << 1
@@ -134,3 +143,11 @@ class ManifestBackend(Flag):
         
         group_repr = repr(self.group) # Calculate group repr
         return f"{base_repr_val} (group: {group_repr})"
+    
+    def __hash__(self) -> int:
+        return hash(self.value)
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestBackend):
+            return False
+        return self.value == other.value

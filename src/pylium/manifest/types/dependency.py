@@ -14,7 +14,7 @@ from enum import Enum
 from pydantic import computed_field, Field
 
 
-class ManifestDependencyType(Enum):
+class ManifestDependencyType(str, Enum):
     PYLIUM = "pylium"
     PIP = "pip"
 
@@ -23,9 +23,17 @@ class ManifestDependencyType(Enum):
     
     def __repr__(self):
         return self.value
+    
+    def __hash__(self) -> int:
+        return hash(self.value)
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestDependencyType):
+            return False
+        return self.value == other.value
 
 
-class ManifestDependencyCategory(Enum):
+class ManifestDependencyCategory(str, Enum):
     """
     Priority/Criticality level for dependencies.
     Critical dependencies are required for basic functionality.
@@ -48,10 +56,7 @@ class ManifestDependencyCategory(Enum):
         if not isinstance(other, ManifestDependencyCategory):
             return False
         return self.value == other.value
-    
-    def __ne__(self, other: Any) -> bool:
-        return not self.__eq__(other)
-    
+        
     @computed_field
     @property
     def description(self) -> str:
@@ -64,7 +69,7 @@ class ManifestDependencyCategory(Enum):
         }[self]
 
 
-class ManifestDependencyDirection(Enum):
+class ManifestDependencyDirection(str, Enum):
     """
     The direction of the dependency.
     """
@@ -86,10 +91,7 @@ class ManifestDependencyDirection(Enum):
         if not isinstance(other, ManifestDependencyDirection):
             return False
         return self.value == other.value
-    
-    def __ne__(self, other: Any) -> bool:
-        return not self.__eq__(other)
-    
+       
     @property
     def description(self) -> str:
         return {
@@ -150,3 +152,16 @@ class ManifestDependency(ManifestValue, ManifestDependencyTypes):
     def __repr__(self) -> str:
         """Return a detailed string representation of the dependency."""
         return str(self)
+    
+    def __hash__(self) -> int:
+        return hash((self.name, self.version, self.type, self.category, self.direction, self.source))
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestDependency):
+            return False
+        return (self.name == other.name and
+                self.version == other.version and
+                self.type == other.type and
+                self.category == other.category and
+                self.direction == other.direction and
+                self.source == other.source)

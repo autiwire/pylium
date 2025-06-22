@@ -7,7 +7,7 @@ from .value import ManifestValue
 from .author import ManifestAuthor
 
 # Standard library imports
-from typing import Optional, List, Generator
+from typing import Optional, List, Generator, Any
 
 
 class ManifestCopyright(ManifestValue):
@@ -20,6 +20,14 @@ class ManifestCopyright(ManifestValue):
     def __repr__(self):
         return f"(c) ({self.date}) {self.author}"
     
+    def __hash__(self) -> int:
+        return hash((self.date, self.author))
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestCopyright):
+            return False
+        return (self.date == other.date and
+                self.author == other.author)
 
 class ManifestLicense(ManifestValue):
     """License information for manifests."""

@@ -697,18 +697,19 @@ def list_dependencies2(path: str = "", recursive: bool = True, type_filter: str 
     )
     
     # Print the analysis as json string
-    print(analysis)
+    print(analysis.model_dump())
     print("--------------------------------")
     
-    import json
-    json_str = json.dumps(analysis.to_dict(), indent=4)
+    json_str = analysis.model_dump_json(indent=4)
+    print(json_str) 
+    print("--------------------------------")
     
-    # deserialize the json string back to a DependencyAnalysis object
-    analysis = DependencyAnalysis.from_dict(json.loads(json_str))
-    print(analysis)
+    # deserialize the json string back to a DependencyAnalysis object using the from_json method
+    analysis = DependencyAnalysis.model_validate_json(json_str)
+    print(analysis.model_dump())
     print("--------------------------------")
 
     # For backward compatibility, return dict format
-    return analysis.to_dict()
+    #return analysis.to_dict()
 
 

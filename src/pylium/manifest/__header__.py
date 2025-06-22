@@ -112,6 +112,11 @@ __manifest__ = Manifest(
                                    "Converted Version type to use Pydantic validation",
                                    "Updated dependency types to use Pydantic fields",
                                    "Enhanced type safety across the manifest system"]),
+        Manifest.Changelog(version=Manifest.Version("0.1.17"), date=Manifest.Date(2025,6,21), author=_manifest_core_authors.rraudzus,
+                             notes=["Improved JSON serialization using Pydantic's native capabilities",
+                                   "Converted dependency enums to str-based Enums for better serialization",
+                                   "Removed custom JSON serialization in favor of Pydantic's model_dump_json",
+                                   "Enhanced equality and hash operations for dependency types"])
     ]
 )
 
@@ -142,6 +147,10 @@ Manifest.__manifest__ = __manifest__.createChild(
                           notes=["Integrated Pydantic model system",
                                  "Enhanced field validation and type safety",
                                  "Added proper serialization support"]),
+        Manifest.Changelog(version=Manifest.Version("0.1.7"), date=Manifest.Date(2025,6,21), author=_manifest_core_authors.rraudzus,
+                          notes=["Improved JSON serialization using native Pydantic methods",
+                                 "Enhanced type safety for dependency enums",
+                                 "Optimized serialization performance"])
     ]
 )
 
