@@ -116,7 +116,11 @@ __manifest__ = Manifest(
                              notes=["Improved JSON serialization using Pydantic's native capabilities",
                                    "Converted dependency enums to str-based Enums for better serialization",
                                    "Removed custom JSON serialization in favor of Pydantic's model_dump_json",
-                                   "Enhanced equality and hash operations for dependency types"])
+                                   "Enhanced equality and hash operations for dependency types"]),
+        Manifest.Changelog(version=Manifest.Version("0.1.18"), date=Manifest.Date(2025,6,22), author=_manifest_core_authors.rraudzus,
+                             notes=["Added dependency conflict detection and reporting",
+                                   "Enhanced dependency version comparison logic",
+                                   "Added deps function to create a dependency list from the given object path"])
     ]
 )
 
@@ -150,7 +154,11 @@ Manifest.__manifest__ = __manifest__.createChild(
         Manifest.Changelog(version=Manifest.Version("0.1.7"), date=Manifest.Date(2025,6,21), author=_manifest_core_authors.rraudzus,
                           notes=["Improved JSON serialization using native Pydantic methods",
                                  "Enhanced type safety for dependency enums",
-                                 "Optimized serialization performance"])
+                                 "Optimized serialization performance"]),
+        Manifest.Changelog(version=Manifest.Version("0.1.8"), date=Manifest.Date(2025,6,22), author=_manifest_core_authors.rraudzus,
+                          notes=["Added dependency conflict detection and reporting",
+                                 "Enhanced dependency version comparison logic",
+                                 "Improved dependency conflict resolution"])
     ]
 )
 

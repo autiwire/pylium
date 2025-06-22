@@ -10,7 +10,7 @@ __manifest__: Manifest = __parent_manifest__.createChild(
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.API,
     dependencies=[  Manifest.Dependency(name="fastapi", version=Manifest.Version(">=0.115.6"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME),
-                    Manifest.Dependency(name="fastapi", version=Manifest.Version("==0.110.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME, direction=Manifest.Dependency.Direction.EXACT) ],
+                    Manifest.Dependency(name="fastapi", version=Manifest.Version("<=0.110.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME) ],
     changelog=[
         Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025,6,15), author=__parent_manifest__.authors.rraudzus, 
                                  notes=["Initial release"]),

@@ -31,6 +31,9 @@ __manifest__: Manifest = __parent_manifest__.createChild(
                                  notes=["Added __parent_manifest__ to the cli module manifest to allow for proper manifest resolution"]),
         Manifest.Changelog(version=Manifest.Version("0.1.4"), date=Manifest.Date(2025,6,20), author=__parent_manifest__.authors.rraudzus,
                                  notes=["Added make_function_wrapper to CLIRenderer to allow for proper function wrapping"]),
+        Manifest.Changelog(version=Manifest.Version("0.1.5"), date=Manifest.Date(2025,6,22), author=__parent_manifest__.authors.rraudzus,
+                                 notes=["Added RichTree and RichTable to CLIOutputRenderer to allow for rendering",
+                                        "Added CLIOutputRenderer to allow for proper rendering of CLI output"])
     ]
 )
 
