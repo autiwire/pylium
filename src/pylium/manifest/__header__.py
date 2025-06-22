@@ -53,8 +53,8 @@ __manifest__ = Manifest(
     frontend=Manifest.Frontend.CLI,
     aiAccessLevel=Manifest.AIAccessLevel.Read,
     dependencies=[ 
-        Manifest.Dependency(name="packaging", version=Manifest.Version("25.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME),
-        Manifest.Dependency(name="pydantic", version=Manifest.Version("2.11.4"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME)
+        Manifest.Dependency(name="packaging", version=Manifest.Version(">=25.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME),
+        Manifest.Dependency(name="pydantic", version=Manifest.Version(">=2.11.4"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME)
     ],
     authors=_manifest_core_authors,
     maintainers=_manifest_core_maintainers,
@@ -192,24 +192,32 @@ def tree(object: str = "", simple: bool = False, indent: int = 0):
 
 @Manifest.func(__manifest__.createChild(
     location=None,
-    description="Prints the manifest tree",
+    description="Creates a dependency list from the given object path",
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     aiAccessLevel=Manifest.AIAccessLevel.Read,
     changelog=[
-        Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025,6,17), author=_manifest_core_authors.rraudzus, 
-                            notes=["Added tree function to print the manifest tree"]),
+        Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025,6,22), author=_manifest_core_authors.rraudzus, 
+                            notes=["Added deps function to create a dependency list from the given object path"]),
     ]
 ))
 def deps(object: str = "", recursive: bool = True, type_filter: str = None, category_filter: str = None) -> Manifest.Dependency.List:
-    """Prints the dependencies of the given object.
+    """Creates a dependency list from the given object path.
     
     The object can be a module, class, method or function.
+
+    Args:
+        object: Object to create a dependency list for
+        recursive: Whether to include recursive dependencies
+        type_filter: Filter by dependency type
+        category_filter: Filter by dependency category
+
+        Returns:
+        Manifest.Dependency.List object containing:
+        - dependencies: Dict[str, List[Manifest.Dependency]] - All dependencies per module
+        - conflicts: List[Manifest.Dependency.Conflict] - All detected conflicts
+        - stats: Manifest.Dependency.Stats - Statistics about dependencies
     """
 
-    manifest = Manifest.getManifest(object)
-    if manifest is None:
-        raise ValueError(f"No manifest found for path: {object}")
-    
-    return manifest.listDependencies(recursive, type_filter, category_filter)
+    return Manifest.Dependency.List.fromManifest(object, recursive, type_filter, category_filter)
 

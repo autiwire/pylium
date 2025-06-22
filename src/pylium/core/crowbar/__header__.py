@@ -21,12 +21,12 @@ __manifest__ : Manifest = __parent_manifest__.createChild(
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
     dependencies=[
-        Manifest.Dependency(name="pip", version=Manifest.Version("25.3.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="setuptools", version=Manifest.Version("69.0.3"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="setuptools-scm", version=Manifest.Version("8.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="wheel", version=Manifest.Version("0.42.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
-        Manifest.Dependency(name="packaging", version=Manifest.Version("25.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME),
-        Manifest.Dependency(name="tomli-w", version=Manifest.Version("1.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME)
+        Manifest.Dependency(name="pip", version=Manifest.Version(">=25.3.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="setuptools", version=Manifest.Version(">=69.0.3"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="setuptools-scm", version=Manifest.Version(">=8.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="wheel", version=Manifest.Version(">=0.42.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.BUILD),
+        Manifest.Dependency(name="packaging", version=Manifest.Version(">=25.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME),
+        Manifest.Dependency(name="tomli-w", version=Manifest.Version(">=1.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME)
                     ],
     changelog=[
         Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025, 6, 16), 
@@ -556,20 +556,11 @@ def list_dependencies2(path: str = "", recursive: bool = True, type_filter: str 
         type_filter: Filter by dependency type
         category_filter: Filter by dependency category
     
-    Returns:
-        DependencyAnalysis object containing:
-        - dependencies: Dict[str, List[Manifest.Dependency]] - All dependencies per module
-        - conflicts: List[ConflictInfo] - All detected conflicts
-        - stats: DependencyStats - Statistics about dependencies
+    
         
         For backward compatibility, also returns a dict format when needed
     """
-    manifest = Manifest.getManifest(path)
-    if manifest is None:
-        raise ValueError(f"No manifest found for path: {path}")
-    
-    dependencies = manifest.listDependencies(recursive, type_filter, category_filter)  
-    return dependencies
+    return Manifest.Dependency.List.fromManifest(path, recursive, type_filter, category_filter)
    
     # Create the analysis object
     #analysis = Manifest.Dependency.Analysis(

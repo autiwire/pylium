@@ -12,6 +12,7 @@ class ManifestValueTypes:
     """Type definitions for manifest values."""
     Date = datetime.date
 
+
 class ManifestValue(XObject, ManifestValueTypes):
     """Base class for manifest values with common type definitions."""
     

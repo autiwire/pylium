@@ -9,7 +9,10 @@ __manifest__: Manifest = __parent_manifest__.createChild(
     description="CLI module",
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
-    dependencies=[ Manifest.Dependency(name="fire", version=Manifest.Version("0.7.0"), type=Manifest.Dependency.Type.PIP, source="git+https://github.com/Verlusti/python-fire.git", category=Manifest.Dependency.Category.RUNTIME) ],
+    dependencies=[ 
+        Manifest.Dependency(name="fire", version=Manifest.Version("0.7.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME, source="git+https://github.com/Verlusti/python-fire.git"),
+        Manifest.Dependency(name="rich", version=Manifest.Version("14.0.0"), type=Manifest.Dependency.Type.PIP, category=Manifest.Dependency.Category.RUNTIME),
+    ],
     changelog=[
         Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025,6,6), author=__parent_manifest__.authors.rraudzus, 
                                  notes=["Initial release"]),

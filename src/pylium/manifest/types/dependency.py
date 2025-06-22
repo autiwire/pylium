@@ -3,15 +3,16 @@ Types for the manifest.
 """
 
 # Pylium imports
+from .xobject import XObject
 from .value import ManifestValue
-from .version import ManifestVersion
+from .version import ManifestVersion, ManifestVersionDirection
 
 # Standard library imports
 from typing import Any, Optional, Dict, List
 from enum import Enum
 
 # External imports
-from pydantic import computed_field, Field
+from pydantic import computed_field, Field, ConfigDict
 
 
 class ManifestDependencyType(str, Enum):
@@ -69,46 +70,6 @@ class ManifestDependencyCategory(str, Enum):
         }[self]
 
 
-class ManifestDependencyDirection(str, Enum):
-    """
-    The direction of the dependency.
-    """
-        
-    MINIMUM = "minimum"
-    EXACT = "exact"
-    MAXIMUM = "maximum"
-    
-    def __str__(self):
-        return self.value
-    
-    def __repr__(self):
-        return self.value
-    
-    def __hash__(self) -> int:
-        return hash(self.value)
-    
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, ManifestDependencyDirection):
-            return False
-        return self.value == other.value
-       
-    @property
-    def description(self) -> str:
-        return {
-            ManifestDependencyDirection.MINIMUM: "Minimum version of the dependency (default)",
-            ManifestDependencyDirection.EXACT: "Exact version of the dependency",
-            ManifestDependencyDirection.MAXIMUM: "Maximum version of the dependency"
-        }[self]
-    
-    @property
-    def sign(self) -> str:
-        return {
-            ManifestDependencyDirection.MINIMUM: ">=",
-            ManifestDependencyDirection.EXACT: "==",
-            ManifestDependencyDirection.MAXIMUM: "<="
-        }[self]
-
-
 class ManifestDependencyConflict(ManifestValue):
     """Information about a dependency conflict"""
     type: str  # Type of conflict (e.g. "exact_below_minimum", "multiple_exact", "no_valid_version")
@@ -135,7 +96,8 @@ class ManifestDependencyTypes():
     """
     Type = ManifestDependencyType
     Category = ManifestDependencyCategory
-    Direction = ManifestDependencyDirection
+    Version = ManifestVersion
+    Direction = Version.Direction
     Conflict = ManifestDependencyConflict
     Stats = ManifestDependencyStats
 
@@ -145,6 +107,14 @@ ManifestDependencyTypes.Types = ManifestDependencyTypes
 class ManifestDependency(ManifestValue, ManifestDependencyTypes):
     """A dependency in the manifest system."""
     
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        json_schema_serialization_defaults=True,
+    )
+
+    __style__: XObject.Style = XObject.Style.LINEAR
+
     type: ManifestDependencyTypes.Type = Field(
         default=ManifestDependencyTypes.Type.PIP,
         description="Type of the dependency"
@@ -159,24 +129,24 @@ class ManifestDependency(ManifestValue, ManifestDependencyTypes):
         default=ManifestDependencyTypes.Category.AUTOMATIC,
         description="Category of the dependency"
     )
-    direction: ManifestDependencyTypes.Direction = Field(
-        default=ManifestDependencyTypes.Direction.MINIMUM,
-        description="Version constraint direction"
-    )
 
     def __str__(self) -> str:
         """Return a string representation of the dependency."""
-        if self.source is not None:
-            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] @ {self.source} [{self.category}]"
-        else:
-            return f"{self.name} ({self.direction.sign} {self.version}) [{self.type.name}] [{self.category}]"
+        parts = [
+            f"type={self.type}",
+            f"name={self.name}",
+            f"version={self.version}",
+            f"source={self.source or 'None'}",
+            f"category={self.category}"
+        ]
+        return ", ".join(parts)
     
     def __repr__(self) -> str:
         """Return a detailed string representation of the dependency."""
         return str(self)
     
     def __hash__(self) -> int:
-        return hash((self.name, self.version, self.type, self.category, self.direction, self.source))
+        return hash((self.name, self.version, self.type, self.category, self.source))
     
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, ManifestDependency):
@@ -185,40 +155,39 @@ class ManifestDependency(ManifestValue, ManifestDependencyTypes):
                 self.version == other.version and
                 self.type == other.type and
                 self.category == other.category and
-                self.direction == other.direction and
                 self.source == other.source)
-    
+
 
 class ManifestDependencyList(ManifestValue):
-    """Complete dependency analysis results"""
-    dependencies: Dict[str, List[ManifestDependency]]
+    """A list of dependencies grouped by module."""
+    dependencies: Dict[str, List[ManifestDependency]] = Field(default_factory=dict)
 
+    __style__: XObject.Style = XObject.Style.TREE
 
     @computed_field
     @property
-    def conflicts(self) -> List[ManifestDependencyConflict]:
-        """Get confilcts object"""
-
-        dependencies = self.dependencies
-    
-        # Collect all versions of each package
-        dep_versions = {}  # name -> [(version, direction, module)]
-        for module, module_deps in dependencies.items():
-            for dep in module_deps:
-                if dep.type.name == "PIP":
-                    dep_versions.setdefault(dep.name, []).append((dep.version, dep.direction, module))
-        
-        # Analyze conflicts
+    def conflicts(self) -> List[ManifestDependency.Conflict]:
+        """Get a list of conflicts for this dependency."""
         conflicts = []
+        dep_versions = {}
+
+        # Group versions by package name
+        for module, deps in self.dependencies.items():
+            for dep in deps:
+                dep_versions.setdefault(dep.name, []).append((dep.version, dep.version.direction, module))
+
+        # Check for conflicts
         for pkg_name, versions in dep_versions.items():
             if len(versions) > 1:
                 exact_versions = [(v, m) for v, d, m in versions if d == ManifestDependency.Direction.EXACT]
                 min_versions = [(v, m) for v, d, m in versions if d == ManifestDependency.Direction.MINIMUM]
                 max_versions = [(v, m) for v, d, m in versions if d == ManifestDependency.Direction.MAXIMUM]
                 
+                #print(exact_versions, min_versions, max_versions)
+
                 # Case 1: Multiple different EXACT versions
                 if len(exact_versions) > 1:
-                    unique_versions = set(v for v, _ in exact_versions)
+                    unique_versions = set(str(v) for v, _ in exact_versions)
                     if len(unique_versions) > 1:
                         conflicts.append(ManifestDependency.Conflict(
                             type="multiple_exact",
@@ -230,11 +199,10 @@ class ManifestDependencyList(ManifestValue):
                 # Case 2: Single EXACT version with incompatible constraints
                 if len(exact_versions) == 1:
                     exact_ver, exact_module = exact_versions[0]
-                    exact_version = exact_ver.version
                     
+                    # Check minimum version constraints
                     for min_ver, min_module in min_versions:
-                        min_version = min_ver.version
-                        if exact_version < min_version:
+                        if str(exact_ver) < str(min_ver):  # Use string comparison for proper version comparison
                             conflicts.append(ManifestDependency.Conflict(
                                 type="exact_below_minimum",
                                 package=pkg_name,
@@ -243,9 +211,9 @@ class ManifestDependencyList(ManifestValue):
                                 minimum={"version": str(min_ver), "module": min_module}
                             ))
                     
+                    # Check maximum version constraints
                     for max_ver, max_module in max_versions:
-                        max_version = max_ver.version
-                        if exact_version > max_version:
+                        if str(exact_ver) > str(max_ver):  # Use string comparison for proper version comparison
                             conflicts.append(ManifestDependency.Conflict(
                                 type="exact_above_maximum",
                                 package=pkg_name,
@@ -256,20 +224,21 @@ class ManifestDependencyList(ManifestValue):
                 
                 # Case 3: MIN/MAX constraints with no possible version
                 if min_versions and max_versions:
-                    highest_min = max([(v.version, v, m) for v, m in min_versions], key=lambda x: x[0])
-                    lowest_max = min([(v.version, v, m) for v, m in max_versions], key=lambda x: x[0])
+                    # Find highest minimum version and lowest maximum version
+                    highest_min = max(min_versions, key=lambda x: str(x[0]))
+                    lowest_max = min(max_versions, key=lambda x: str(x[0]))
                     
-                    if highest_min[0] > lowest_max[0]:
+                    # Check if there's a gap between min and max
+                    if str(highest_min[0]) > str(lowest_max[0]):
                         conflicts.append(ManifestDependency.Conflict(
                             type="no_valid_version",
                             package=pkg_name,
                             severity="error",
-                            minimum={"version": str(highest_min[1]), "module": highest_min[2]},
-                            maximum={"version": str(lowest_max[1]), "module": lowest_max[2]}
+                            minimum={"version": str(highest_min[0]), "module": highest_min[1]},
+                            maximum={"version": str(lowest_max[0]), "module": lowest_max[1]}
                         ))
 
         return conflicts
-    
 
     @computed_field
     @property
@@ -297,21 +266,29 @@ class ManifestDependencyList(ManifestValue):
                 # Type stats
                 type_name = dep.type.name
                 tmp_stats.by_type[type_name] = tmp_stats.by_type.get(type_name, 0) + 1
-    
+
         return tmp_stats
 
     @classmethod
-    def fromManifest(cls, fqn_short: str, recursive: bool = True, type_filter: str = None, category_filter: str = None) -> "ManifestDependencyList":
+    def fromManifest(cls, manifest: str | object, recursive: bool = True, type_filter: str = None, category_filter: str = None) -> "ManifestDependencyList":
         """
-        Get the dependencies of the given object path
+        Get the dependencies of the given manifest path or manifest object
         """
 
         from pylium.manifest import Manifest
-        manifest = Manifest.getManifest(fqn_short)
-        if manifest is None:
-            raise ValueError(f"No manifest found for path: {fqn_short}")
-        
-        return manifest.listDependencies(recursive, type_filter, category_filter)
+
+        if isinstance(manifest, str):
+            try:
+                manifest = Manifest.getManifest(manifest)
+            except ValueError:
+                raise ValueError(f"No manifest found for path: {manifest}")
+        elif isinstance(manifest, Manifest):
+            pass
+        else:
+            raise ValueError(f"Invalid manifest type: {type(manifest)}")
+
+        return manifest.listDependencies(recursive=recursive, type_filter=type_filter, category_filter=category_filter)
+
 
 
 ManifestDependencyTypes.List = ManifestDependencyList

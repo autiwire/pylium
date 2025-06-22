@@ -1,12 +1,24 @@
+"""
+Implementation of the recursive, lazy-loading CLI builder.
+"""
+
+# Pylium imports
 from .__header__ import CLI, Header
 from pylium.manifest import Manifest
 
+# Standard imports
 import importlib
 import os
-import fire
 import functools
-from typing import Any
+from typing import Any, Union
 import inspect
+
+# External imports
+import fire
+import rich
+from rich.console import Console as RichConsole
+from rich.tree import Tree as RichTree
+from rich.table import Table as RichTable
 
 
 class CLIRenderer:
@@ -157,6 +169,131 @@ class CLIRenderer:
         cli_instance.__name__ = self._manifest.location.localName
         return cli_instance
 
+
+class CLIOutputRenderer:
+    def __init__(self, console: RichConsole = None):
+        self.console = console or RichConsole()
+
+    def render(self, obj: Any, name: str = None) -> Any:
+        if isinstance(obj, Manifest.XObject):
+            return self._render_xobject(obj, name)
+        elif isinstance(obj, dict):
+            return self._render_dict(obj, name)
+        elif isinstance(obj, list):
+            return self._render_list(obj, name)
+        else:
+            return str(obj)
+
+    def _render_xobject(self, obj: Manifest.XObject, name: str = None) -> Any:
+        style = getattr(obj, "__style__", Manifest.XObject.Style.NONE)
+        model_data = obj.model_dump()
+
+        if style == Manifest.XObject.Style.TREE:
+            tree = RichTree(f"[bold]{name or obj.__class__.__name__}[/]")
+            for key, value in model_data.items():
+                branch = self._render_subnode(key, value)
+                tree.add(branch if isinstance(branch, (str, RichTree, RichTable)) else str(branch))
+            return tree
+
+        elif style == Manifest.XObject.Style.TABLE:
+            table = RichTable(title=name or obj.__class__.__name__, show_header=True, show_lines=True)
+            fields = list(obj.model_fields.keys())
+            for field in fields:
+                table.add_column(str(field))
+
+            values = []
+            for field in fields:
+                val = getattr(obj, field)
+                if isinstance(val, (Manifest.XObject, list, dict)):
+                    rendered = self.render(val, name=field)
+                    values.append(self._stringify_rich(rendered))
+                else:
+                    values.append(str(val))
+            table.add_row(*values)
+            return table
+
+        else:
+            return obj.model_dump_json(indent=2)
+
+    def _render_dict(self, data: dict, name: str = None) -> RichTree:
+        tree = RichTree(f"[bold]{name or 'Dict'}[/]")
+        for key, value in data.items():
+            branch = self._render_subnode(str(key), value)
+            tree.add(branch if isinstance(branch, (str, RichTree, RichTable)) else str(branch))
+        return tree
+
+    def _render_list(self, items: list, name: str = None) -> Union[RichTree, RichTable, str]:
+        if not items:
+            return f"[dim]{name or 'List'}[/]: []"
+
+        # Check if all items are XObjects with a specific style
+        if items and all(isinstance(x, Manifest.XObject) for x in items):
+            first_style = getattr(items[0], "__style__", None)
+            if all(getattr(x, "__style__", None) == first_style for x in items):
+                if first_style == Manifest.XObject.Style.LINEAR:
+                    tree = RichTree(f"[bold]{name or 'List'}[/]")
+                    for idx, item in enumerate(items):
+                        model_data = item.model_dump()
+                        parts = [f"{k}={v}" for k, v in model_data.items()]
+                        tree.add(f"[{idx}]: {', '.join(parts)}")
+                    return tree
+                elif first_style == Manifest.XObject.Style.TABLE:
+                    table = RichTable(title=name or "List", show_header=True, show_lines=True)
+                    fields = list(items[0].model_fields.keys())
+                    for field in fields:
+                        table.add_column(str(field))
+                    for item in items:
+                        row = []
+                        for field in fields:
+                            val = getattr(item, field)
+                            rendered = self.render(val, name=field) if isinstance(val, (Manifest.XObject, list, dict)) else str(val)
+                            row.append(self._stringify_rich(rendered))
+                        table.add_row(*row)
+                    return table
+
+        # Default tree rendering
+        tree = RichTree(f"[bold]{name or 'List'}[/]")
+        for idx, item in enumerate(items):
+            branch = self.render(item, name=f"[{idx}]")
+            tree.add(branch if isinstance(branch, (str, RichTree, RichTable)) else str(branch))
+        return tree
+
+    def _render_subnode(self, key: str, value: Any) -> Union[str, RichTree, RichTable]:
+        if isinstance(value, Manifest.XObject):
+            style = getattr(value, "__style__", None)
+            if style == Manifest.XObject.Style.LINEAR:
+                # Format any object with LINEAR style in a single line
+                model_data = value.model_dump()
+                parts = [f"{k}={v}" for k, v in model_data.items()]
+                return f"[cyan]{key}[/]: {', '.join(parts)}"
+            return self.render(value, name=key)
+        elif isinstance(value, (dict, list)):
+            return self.render(value, name=key)
+        return f"[cyan]{key}[/]: {self._render_inline(value)}"
+
+    def _render_inline(self, value: Any) -> str:
+        if isinstance(value, Manifest.XObject):
+            return value.model_dump_json(indent=0)
+        elif isinstance(value, list):
+            return ", ".join(self._render_inline(v) for v in value)
+        elif isinstance(value, dict):
+            return ", ".join(f"{k}={self._render_inline(v)}" for k, v in value.items())
+        return str(value)
+
+    def _stringify_rich(self, rendered: Any) -> str:
+        if isinstance(rendered, (RichTree, RichTable)):
+            from rich.console import Console
+            from io import StringIO
+            out = StringIO()
+            console = Console(file=out, force_terminal=True, width=120)
+            console.print(rendered)
+            return out.getvalue().strip()
+        return str(rendered)
+
+    def print(self, obj: Any, name: str = None):
+        self.console.print(self.render(obj, name))
+
+
 class CLIImpl(CLI):
     """
     Implementation of the recursive, lazy-loading CLI builder.
@@ -188,7 +325,7 @@ class CLIImpl(CLI):
                 if hasattr(obj, '__cli_serialize__'):
                     return obj.__cli_serialize__()
                 else:
-                    return obj.model_dump_json(indent=4)
+                    return CLIOutputRenderer().print(obj=obj)
             else:
                 return obj
         fire.Fire(cli_target, name=self._target_manifest.location.fqnShort, serialize=serialize)
