@@ -190,4 +190,26 @@ def tree(object: str = "", simple: bool = False, indent: int = 0):
     else:
         raise RuntimeError("No frontend function available")
 
+@Manifest.func(__manifest__.createChild(
+    location=None,
+    description="Prints the manifest tree",
+    status=Manifest.Status.Development,
+    frontend=Manifest.Frontend.CLI,
+    aiAccessLevel=Manifest.AIAccessLevel.Read,
+    changelog=[
+        Manifest.Changelog(version=Manifest.Version("0.1.0"), date=Manifest.Date(2025,6,17), author=_manifest_core_authors.rraudzus, 
+                            notes=["Added tree function to print the manifest tree"]),
+    ]
+))
+def deps(object: str = "", recursive: bool = True, type_filter: str = None, category_filter: str = None) -> Manifest.Dependency.List:
+    """Prints the dependencies of the given object.
+    
+    The object can be a module, class, method or function.
+    """
+
+    manifest = Manifest.getManifest(object)
+    if manifest is None:
+        raise ValueError(f"No manifest found for path: {object}")
+    
+    return manifest.listDependencies(recursive, type_filter, category_filter)
 

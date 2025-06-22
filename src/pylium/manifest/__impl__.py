@@ -498,18 +498,22 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
         # Could add more details like dependencies, copyright, etc.
         return ". ".join(filter(None, parts)) + "."
 
+
     def __str__(self):
         return f"{self.location.fqn} (v{self.version if self.changelog else 'N/A'})"
+
 
     def __repr__(self):
         # Provides a more detailed representation, could be made even more exhaustive
         return f"Manifest({self.location.fqn}, version='{self.version if self.changelog else 'N/A'}', authors={len(self.authors) if self.authors else 0})"
+
 
     def __hash__(self):
         # Hash based on a few key identifying attributes
         # Note: Manifest is mutable, so hashing can be tricky if based on mutable fields.
         # Using location fqn as a primary key for the hash.
         return hash((self.location.fqn, str(self.version if self.changelog else None)))
+
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Manifest):
@@ -521,25 +525,75 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
             self.description == other.description
         )
 
+
     def __lt__(self, other: Any) -> bool:
         if not isinstance(other, Manifest):
             return NotImplemented
         return (self.location.fqn, self.version if self.changelog else Version("0")) < (other.location.fqn, other.version if other.changelog else Version("0"))
+
 
     def __le__(self, other: Any) -> bool:
         if not isinstance(other, Manifest):
             return NotImplemented
         return (self.location.fqn, self.version if self.changelog else Version("0")) <= (other.location.fqn, other.version if other.changelog else Version("0"))
 
+
     def __gt__(self, other: Any) -> bool:
         if not isinstance(other, Manifest):
             return NotImplemented
         return (self.location.fqn, self.version if self.changelog else Version("0")) > (other.location.fqn, other.version if other.changelog else Version("0"))
 
+
     def __ge__(self, other: Any) -> bool:
         if not isinstance(other, Manifest):
             return NotImplemented
         return (self.location.fqn, self.version if self.changelog else Version("0")) >= (other.location.fqn, other.version if other.changelog else Version("0"))
+
+
+    def _get_dependencies_recursive(self, recursive: bool = True, type_filter: str = None, category_filter: str = None) -> Dict[str, List[ManifestTypes.Dependency]]:
+        """
+        Get the dependencies of the given object path
+        """
+
+        dependencies = {}
+
+        if recursive:
+            for child in self.children:
+                dependencies.update(child._get_dependencies_recursive(recursive, type_filter, category_filter))
+
+        # Add self to the dependencies if we have elements
+        if len(self.dependencies) > 0:
+            # Root manifest is purely virtual, so it has no location
+            if self.isRoot:
+                dependencies.update({"/": self.dependencies})
+            else:
+                dependencies.update({self.location.fqnShort: self.dependencies})
+
+        # Filter dependencies based on type and category
+        filtered_dependencies = {}
+        for module, deps in dependencies.items():
+            filtered_deps = []
+            for dep in deps:
+                # Case insensitive comparison for both filters
+                dep_type = dep.type.name.upper()
+                dep_category = getattr(dep, 'category', None) and getattr(dep, 'category').name.upper()
+                type_match = type_filter is None or dep_type == type_filter.upper()
+                category_match = category_filter is None or (dep_category and dep_category == category_filter.upper())
+                
+                if type_match and category_match:
+                    filtered_deps.append(dep)
+            if filtered_deps:
+                filtered_dependencies[module] = filtered_deps
+
+        return filtered_dependencies
+
+
+    def listDependencies(self, recursive: bool = True, type_filter: str = None, category_filter: str = None) -> ManifestTypes.Dependency.List:
+        """
+        Get the dependencies of the given object path
+        """
+        dependencies = self._get_dependencies_recursive(recursive, type_filter, category_filter)
+        return Manifest.Dependency.List(dependencies=dependencies)
 
     def createChild(self, 
                    location: ManifestTypes.Location,

@@ -1,11 +1,18 @@
+"""
+Installer and package management system for Pylium
+"""
+
+# Pylium imports
 from pylium.core import __manifest__ as __parent_manifest__
 from pylium.manifest import Manifest
 from pylium.core.header import Header, classProperty, dlock
-from .models import ConflictInfo, DependencyStats, DependencyAnalysis
 
+# Standard library imports
 import threading
 from abc import abstractmethod
 from typing import Type, Optional, Dict, List, Union
+
+# External imports
 import packaging.version
 
 __manifest__ : Manifest = __parent_manifest__.createChild(
@@ -65,49 +72,6 @@ class Crowbar(Header):
     _default_lock = threading.Lock()
  
 
-    @classmethod
-    def getDependencies(cls, path: str = "", recursive: bool = True, type_filter: str = None, category_filter: str = None) -> Dict[str, List[Manifest.Dependency]]:
-        """
-        Get the dependencies of the given object path
-        """
-
-        manifest = Manifest.getManifest(path)
-
-        if manifest is None:
-            raise ValueError(f"No manifest found for path: {path}")
-
-        dependencies = {}
-
-        if recursive:
-            for child in manifest.children:
-                dependencies.update(cls.getDependencies(child.location.fqnShort, recursive, type_filter, category_filter))
-
-        # Add self to the dependencies if we have elements
-        if len(manifest.dependencies) > 0:
-            # Root manifest is purely virtual, so it has no location
-            if manifest.isRoot:
-                dependencies.update({"/": manifest.dependencies})
-            else:
-                dependencies.update({manifest.location.fqnShort: manifest.dependencies})
-
-        # Filter dependencies based on type and category
-        filtered_dependencies = {}
-        for module, deps in dependencies.items():
-            filtered_deps = []
-            for dep in deps:
-                # Case insensitive comparison for both filters
-                dep_type = dep.type.name.upper()
-                dep_category = getattr(dep, 'category', None) and getattr(dep, 'category').name.upper()
-                type_match = type_filter is None or dep_type == type_filter.upper()
-                category_match = category_filter is None or (dep_category and dep_category == category_filter.upper())
-                
-                if type_match and category_match:
-                    filtered_deps.append(dep)
-            if filtered_deps:
-                filtered_dependencies[module] = filtered_deps
-
-        return filtered_dependencies
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs) 
 
@@ -143,7 +107,8 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
         category_filter: Filter by category (BUILD, RUNTIME, AUTOMATIC, DEVELOPMENT)
     """
 
-    dependencies = Crowbar.getDependencies(path, recursive, type_filter, category_filter)
+    manifest = Manifest.getManifest(path)
+    dependencies = manifest._get_dependencies_recursive(recursive, type_filter, category_filter)
     
     if simple:
         # Simple requirements.txt format
@@ -312,10 +277,10 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
         print(f"   • Version Conflicts: {conflict_count} 🚨")
     
     # Collect statistics
-    stats = DependencyStats(
+    stats = Manifest.Dependency.Stats(
         total_dependencies=sum(len(deps) for deps in dependencies.values()),
         total_modules=len(dependencies),
-        conflicts=len(conflicts),
+        conflicts=conflict_count,
         by_category={},  # Initialize empty dicts
         by_type={}
     )
@@ -333,9 +298,9 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
             type_name = dep.type.name
             stats.by_type[type_name] = stats.by_type.get(type_name, 0) + 1
     
-    if category_counts:
+    if stats.by_category:
         print(f"   • By Category:")
-        for category, count in sorted(category_counts.items()):
+        for category, count in sorted(stats.by_category.items()):
             emoji = {"BUILD": "🔧", "RUNTIME": "⚡", "AUTOMATIC": "🤖", "DEVELOPMENT": "🛠️"}.get(category, "📦")
             print(f"     {emoji} {category}: {count}")
     
@@ -441,7 +406,8 @@ def pyproject_update(path: str = "pyproject.toml", dry_run: bool = False):
     import tomli_w
     
     # Get all dependencies
-    dependencies = Crowbar.getDependencies("", recursive=True)
+    manifest = Manifest.getManifest("")
+    dependencies = manifest._get_dependencies_recursive(recursive=True)
     
     # Track highest version of each package
     runtime_deps = {}  # name -> {version, source}
@@ -580,7 +546,7 @@ def pyproject_update(path: str = "pyproject.toml", dry_run: bool = False):
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.CLI,
 ))
-def list_dependencies2(path: str = "", recursive: bool = True, type_filter: str = None, category_filter: str = None) -> Union[Dict, DependencyAnalysis]:
+def list_dependencies2(path: str = "", recursive: bool = True, type_filter: str = None, category_filter: str = None) -> Manifest.Dependency.List:
     """
     Analyze dependencies and return structured data that can be used by both CLI and API.
     
@@ -598,118 +564,32 @@ def list_dependencies2(path: str = "", recursive: bool = True, type_filter: str 
         
         For backward compatibility, also returns a dict format when needed
     """
-    dependencies = Crowbar.getDependencies(path, recursive, type_filter, category_filter)
+    manifest = Manifest.getManifest(path)
+    if manifest is None:
+        raise ValueError(f"No manifest found for path: {path}")
     
-    # Collect all versions of each package
-    dep_versions = {}  # name -> [(version, direction, module)]
-    for module, module_deps in dependencies.items():
-        for dep in module_deps:
-            if dep.type.name == "PIP":
-                dep_versions.setdefault(dep.name, []).append((dep.version, dep.direction, module))
-    
-    # Analyze conflicts
-    conflicts = []
-    for pkg_name, versions in dep_versions.items():
-        if len(versions) > 1:
-            exact_versions = [(v, m) for v, d, m in versions if d == Manifest.Dependency.Direction.EXACT]
-            min_versions = [(v, m) for v, d, m in versions if d == Manifest.Dependency.Direction.MINIMUM]
-            max_versions = [(v, m) for v, d, m in versions if d == Manifest.Dependency.Direction.MAXIMUM]
-            
-            # Case 1: Multiple different EXACT versions
-            if len(exact_versions) > 1:
-                unique_versions = set(v for v, _ in exact_versions)
-                if len(unique_versions) > 1:
-                    conflicts.append(ConflictInfo(
-                        type="multiple_exact",
-                        package=pkg_name,
-                        severity="error",
-                        versions=[{"version": str(v), "module": m} for v, m in exact_versions]
-                    ))
-            
-            # Case 2: Single EXACT version with incompatible constraints
-            if len(exact_versions) == 1:
-                exact_ver, exact_module = exact_versions[0]
-                exact_version = exact_ver.version
-                
-                for min_ver, min_module in min_versions:
-                    min_version = min_ver.version
-                    if exact_version < min_version:
-                        conflicts.append(ConflictInfo(
-                            type="exact_below_minimum",
-                            package=pkg_name,
-                            severity="error",
-                            exact={"version": str(exact_ver), "module": exact_module},
-                            minimum={"version": str(min_ver), "module": min_module}
-                        ))
-                
-                for max_ver, max_module in max_versions:
-                    max_version = max_ver.version
-                    if exact_version > max_version:
-                        conflicts.append(ConflictInfo(
-                            type="exact_above_maximum",
-                            package=pkg_name,
-                            severity="error",
-                            exact={"version": str(exact_ver), "module": exact_module},
-                            maximum={"version": str(max_ver), "module": max_module}
-                        ))
-            
-            # Case 3: MIN/MAX constraints with no possible version
-            if min_versions and max_versions:
-                highest_min = max([(v.version, v, m) for v, m in min_versions], key=lambda x: x[0])
-                lowest_max = min([(v.version, v, m) for v, m in max_versions], key=lambda x: x[0])
-                
-                if highest_min[0] > lowest_max[0]:
-                    conflicts.append(ConflictInfo(
-                        type="no_valid_version",
-                        package=pkg_name,
-                        severity="error",
-                        minimum={"version": str(highest_min[1]), "module": highest_min[2]},
-                        maximum={"version": str(lowest_max[1]), "module": lowest_max[2]}
-                    ))
-    
-    # Collect statistics
-    stats = DependencyStats(
-        total_dependencies=sum(len(deps) for deps in dependencies.values()),
-        total_modules=len(dependencies),
-        conflicts=len(conflicts),
-        by_category={},  # Initialize empty dicts
-        by_type={}
-    )
-    
-    # Count by category and type
-    for module_deps in dependencies.values():
-        for dep in module_deps:
-            # Category stats
-            category = getattr(dep, 'category', None)
-            if category:
-                category_name = category.name
-                stats.by_category[category_name] = stats.by_category.get(category_name, 0) + 1
-            
-            # Type stats
-            type_name = dep.type.name
-            stats.by_type[type_name] = stats.by_type.get(type_name, 0) + 1
-    
+    dependencies = manifest.listDependencies(recursive, type_filter, category_filter)  
+    return dependencies
+   
     # Create the analysis object
-    analysis = DependencyAnalysis(
-        dependencies=dependencies,
-        conflicts=conflicts,
-        stats=stats
-    )
+    #analysis = Manifest.Dependency.Analysis(
+    #    dependencies=dependencies,
+    #)
     
     # Print the analysis as json string
     print(analysis.model_dump())
     print("--------------------------------")
     
     json_str = analysis.model_dump_json(indent=4)
-    print(json_str) 
-    print("--------------------------------")
+#    print(json_str) 
+#    print("--------------------------------")
     
     # deserialize the json string back to a DependencyAnalysis object using the from_json method
-    analysis = DependencyAnalysis.model_validate_json(json_str)
+    analysis = Manifest.Dependency.Analysis.model_validate_json(json_str)
     print(analysis.model_dump())
     print("--------------------------------")
 
     # For backward compatibility, return dict format
     #return analysis.to_dict()
-
+    return analysis
 

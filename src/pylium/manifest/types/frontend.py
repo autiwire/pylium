@@ -4,6 +4,7 @@ Frontend type for the manifest.
 
 # Standard library imports
 from enum import Flag
+from typing import Any
 
 
 class ManifestFrontend(Flag):
@@ -54,3 +55,11 @@ class ManifestFrontend(Flag):
 
         member_reprs = [f"{cls_name}.{m.name}" for m in decomposed_members]
         return " | ".join(member_reprs)
+    
+    def __hash__(self) -> int:
+        return hash(self.value)
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ManifestFrontend):
+            return False
+        return self.value == other.value

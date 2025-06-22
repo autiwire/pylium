@@ -183,8 +183,15 @@ class CLIImpl(CLI):
         if "PAGER" not in os.environ:
             os.environ["PAGER"] = "cat"
         
-        #print(f"  CLI TARGET: {cli_target} {type(cli_target)} name: {self._target_manifest.location.fqnShort}")
-        fire.Fire(cli_target, name=self._target_manifest.location.fqnShort)
+        def serialize(obj):
+            if isinstance(obj, Manifest.XObject):
+                if hasattr(obj, '__cli_serialize__'):
+                    return obj.__cli_serialize__()
+                else:
+                    return obj.model_dump_json(indent=4)
+            else:
+                return obj
+        fire.Fire(cli_target, name=self._target_manifest.location.fqnShort, serialize=serialize)
 
     def stop(self):
         """

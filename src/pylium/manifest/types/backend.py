@@ -10,7 +10,7 @@ from typing import Any
 from pydantic import computed_field
 
 
-class ManifestBackendGroup(str, Flag):
+class ManifestBackendGroup(Flag):
     NoBackendGroup = 0
     Database = 1 << 0
     File = 1 << 1
@@ -63,7 +63,7 @@ class ManifestBackendGroup(str, Flag):
         return self.value == other.value
 
 
-class ManifestBackend(str, Flag):
+class ManifestBackend(Flag):
     NoBackend       = 0
     SQLite          = 1 << 0
     Redis           = 1 << 1
