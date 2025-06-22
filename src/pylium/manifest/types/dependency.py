@@ -107,12 +107,6 @@ ManifestDependencyTypes.Types = ManifestDependencyTypes
 class ManifestDependency(ManifestValue, ManifestDependencyTypes):
     """A dependency in the manifest system."""
     
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_assignment=True,
-        json_schema_serialization_defaults=True,
-    )
-
     __style__: XObject.Style = XObject.Style.LINEAR
 
     type: ManifestDependencyTypes.Type = Field(
