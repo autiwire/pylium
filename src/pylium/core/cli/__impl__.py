@@ -291,7 +291,10 @@ class CLIOutputRenderer:
         return str(rendered)
 
     def print(self, obj: Any, name: str = None):
+        import time
+        start_time = time.time()
         self.console.print(self.render(obj, name))
+        print(f"Rendering time cli output: {time.time() - start_time} seconds")
 
 
 class CLIImpl(CLI):
@@ -314,20 +317,33 @@ class CLIImpl(CLI):
         Builds the CLI from exposed methods and sub-modules, then runs it.
         """
         # Render the tree for python-fire
+        import time
+        start_time = time.time()
         renderer = CLIRenderer(self._target_manifest)
         cli_target = renderer.render()
+
+        # Repeat - modules should already be imported
+        start_time = time.time()
+        renderer = CLIRenderer(self._target_manifest)
+        cli_target = renderer.render()
+        print(f"Rendering time cli object: {time.time() - start_time} seconds")
+
+        print(f"Rendering time cli object: {time.time() - start_time} seconds")
 
         if "PAGER" not in os.environ:
             os.environ["PAGER"] = "cat"
         
-        def serialize(obj):
+        def serialize(obj):        
             if isinstance(obj, Manifest.XObject):
                 if hasattr(obj, '__cli_serialize__'):
                     return obj.__cli_serialize__()
                 else:
-                    return CLIOutputRenderer().print(obj=obj)
+                    CLIOutputRenderer().print(obj=obj)
             else:
                 return obj
+
+            
+
         fire.Fire(cli_target, name=self._target_manifest.location.fqnShort, serialize=serialize)
 
     def stop(self):

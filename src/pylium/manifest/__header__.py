@@ -158,9 +158,13 @@ Manifest.__manifest__ = __manifest__.createChild(
         Manifest.Changelog(version=Manifest.Version("0.1.8"), date=Manifest.Date(2025,6,22), author=_manifest_core_authors.rraudzus,
                           notes=["Added dependency conflict detection and reporting",
                                  "Enhanced dependency version comparison logic",
-                                 "Improved dependency conflict resolution"])
+                                 "Improved dependency conflict resolution"]),
+        Manifest.Changelog(version=Manifest.Version("0.1.9"), date=Manifest.Date(2025,6,23), author=_manifest_core_authors.rraudzus,
+                          notes=["Added tree function to print the manifest tree",
+                                 "Added deps function to create a dependency list from the given object path"])
     ]
 )
+
 
 @Manifest.func(__manifest__.createChild(
     location=None,
@@ -197,6 +201,7 @@ def tree(object: str = "", simple: bool = False, indent: int = 0):
         frontend_funcs[frontend_type](Manifest.getManifest(object), simple, indent)
     else:
         raise RuntimeError("No frontend function available")
+
 
 @Manifest.func(__manifest__.createChild(
     location=None,
