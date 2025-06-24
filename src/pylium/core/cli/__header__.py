@@ -4,7 +4,8 @@ from pylium.core.frontend import Frontend
 
 from typing import ClassVar
 
-__manifest__: Manifest = __parent_manifest__.createChild(
+__manifest__: Manifest = Manifest(
+    parent=__parent_manifest__,
     location=Manifest.Location(module=__name__, classname=None),
     description="CLI module",
     status=Manifest.Status.Development,
@@ -42,7 +43,8 @@ class CLI(Frontend):
     A component that recursively builds and runs a command-line interface.
     """
 
-    __manifest__ : Manifest = __manifest__.createChild(
+    __manifest__ : Manifest = Manifest(
+        parent=__manifest__,
         location=Manifest.Location(module=__name__, classname=__qualname__),
         description="The core CLI building component for Pylium.",
         status=Manifest.Status.Development,

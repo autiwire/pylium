@@ -4,7 +4,8 @@ from pylium.core.frontend import Frontend
 
 from typing import ClassVar
 
-__manifest__: Manifest = __parent_manifest__.createChild(
+__manifest__: Manifest = Manifest(
+    parent=__parent_manifest__,
     location=Manifest.Location(module=__name__, classname=None),
     description="API module",
     status=Manifest.Status.Development,
@@ -28,7 +29,8 @@ class API(Frontend):
     by the concrete implementation class.
     """
 
-    __manifest__ : Manifest = __manifest__.createChild(
+    __manifest__ : Manifest = Manifest(
+        parent=__manifest__,
         location=Manifest.Location(module=__name__, classname=__qualname__),
         description="The core API building component for Pylium.",
         status=Manifest.Status.Development,

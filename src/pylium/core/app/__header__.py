@@ -6,7 +6,8 @@ import threading
 from abc import abstractmethod
 from typing import Type, Optional
 
-__manifest__ : Manifest = __parent_manifest__.createChild(
+__manifest__ : Manifest = Manifest(
+    parent=__parent_manifest__,
     location=Manifest.Location(module=__name__, classname=None), 
     description="Application management and execution module",
     status=Manifest.Status.Development,
@@ -42,7 +43,8 @@ class App(Header):
 
     Frontend = Manifest.Frontend
 
-    __manifest__ : Manifest = __manifest__.createChild(
+    __manifest__ : Manifest = Manifest(
+        parent=__manifest__,
         location=Manifest.Location(module=__name__, classname=__qualname__),
         description="Application management and execution class",
         status=Manifest.Status.Development,
@@ -64,7 +66,8 @@ class App(Header):
     _default_lock = threading.Lock()
 
     @abstractmethod
-    @Manifest.func(__manifest__.createChild(
+    @Manifest.func(Manifest(
+        parent=__manifest__,
         location=None,
         description="Test function for the App class",
         status=Manifest.Status.Development,
@@ -82,7 +85,8 @@ class App(Header):
 
 
     @classmethod
-    @Manifest.func(__manifest__.createChild(
+    @Manifest.func(Manifest(
+        parent=__manifest__,
         location=None,
         description="Test2 function for the App class",
         status=Manifest.Status.Development,

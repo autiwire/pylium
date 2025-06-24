@@ -27,7 +27,8 @@ _manifest_core_maintainers = Manifest.AuthorList(authors=_manifest_core_authors.
 
 # Root manifest for the manifest system
 __root_manifest__ = RootManifest(
-    location=None,
+    parent=None,
+    location=Manifest.Location(module="", classname=None),
     description="Root manifest for the manifest system",
     status=Manifest.Status.Development,
     frontend=Manifest.Frontend.NoFrontend,
@@ -45,8 +46,11 @@ __root_manifest__ = RootManifest(
 
 Manifest.__root_manifest__ = __root_manifest__
 
+__parent_manifest__ = None # Special case for the manifests module, set externally (in manifest parent modules __header__.py)
+
 # Define Manifests own manifest (per-module-manifest)
 __manifest__ = Manifest(
+    parent=__parent_manifest__,
     location=Manifest.Location(module=__name__, classname=None),
     description="Base class for all manifests",    
     status=Manifest.Status.Development,
@@ -125,7 +129,8 @@ __manifest__ = Manifest(
 )
 
 # Define Manifests own manifest (per-class-manifest)
-Manifest.__manifest__ = __manifest__.createChild(
+Manifest.__manifest__ = Manifest(
+    parent=__manifest__,
     location=Manifest.Location(module=__name__, classname=Manifest.__qualname__),
     description="Base class for all manifests",    
     status=Manifest.Status.Development,
@@ -166,7 +171,8 @@ Manifest.__manifest__ = __manifest__.createChild(
 )
 
 
-@Manifest.func(__manifest__.createChild(
+@Manifest.func(Manifest(
+    parent=__manifest__,
     location=None,
     description="Prints the manifest tree",
     status=Manifest.Status.Development,
@@ -203,7 +209,8 @@ def tree(object: str = "", simple: bool = False, indent: int = 0):
         raise RuntimeError("No frontend function available")
 
 
-@Manifest.func(__manifest__.createChild(
+@Manifest.func(Manifest(
+    parent=__manifest__,
     location=None,
     description="Creates a dependency list from the given object path",
     status=Manifest.Status.Development,

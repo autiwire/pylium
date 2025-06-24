@@ -5,7 +5,8 @@ from abc import abstractmethod
 from typing import Optional, Any, Dict, List, ClassVar
 import threading
 
-__manifest__ : Manifest = __parent_manifest__.createChild(
+__manifest__ : Manifest = Manifest(
+    parent=__parent_manifest__,
     location=Manifest.Location(module=__name__, classname=None), 
     description="Frontend abstraction layer for multiple interface types (CLI, Web, API, etc.)",
     status=Manifest.Status.Development,
@@ -29,7 +30,8 @@ class Frontend(Header):
     including CLI, Web, API, and other interaction modes.
     """
     
-    __manifest__ : Manifest = __manifest__.createChild(
+    __manifest__ : Manifest = Manifest(
+        parent=__manifest__,
         location=Manifest.Location(module=__name__, classname=__qualname__),
         description="Abstract base class for all frontend implementations",
         status=Manifest.Status.Development,

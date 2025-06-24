@@ -15,7 +15,8 @@ from typing import Type, Optional, Dict, List, Union
 # External imports
 import packaging.version
 
-__manifest__ : Manifest = __parent_manifest__.createChild(
+__manifest__ : Manifest = Manifest(
+    parent=__parent_manifest__,
     location=Manifest.Location(module=__name__, classname=None), 
     description="Installer and package management system for Pylium",
     status=Manifest.Status.Development,
@@ -50,7 +51,8 @@ class Crowbar(Header):
     - Repair and update the system
     """
 
-    __manifest__ : Manifest = __manifest__.createChild(
+    __manifest__ : Manifest = Manifest(
+        parent=__manifest__,
         location=Manifest.Location(module=__name__, classname=__qualname__),
         description="The Crowbar installer and package management system.",
         status=Manifest.Status.Development,
@@ -76,7 +78,8 @@ class Crowbar(Header):
         super().__init__(*args, **kwargs) 
 
 
-@Manifest.func(__manifest__.createChild(
+@Manifest.func(Manifest(
+    parent=__manifest__,
     location=None,
     description="List the dependencies of the given object path with beautiful formatting and filtering",
     status=Manifest.Status.Development,
@@ -380,7 +383,8 @@ def list_dependencies(path: str = "", recursive: bool = True, simple: bool = Fal
                     for module in sorted(modules):
                         print(f"      • {module}")
 
-@Manifest.func(__manifest__.createChild(
+@Manifest.func(Manifest(
+    parent=__manifest__,
     location=None,
     description="Update dependencies in pyproject.toml based on manifest dependencies",
     status=Manifest.Status.Development,
@@ -540,7 +544,8 @@ def pyproject_update(path: str = "pyproject.toml", dry_run: bool = False):
         return
 
 
-@Manifest.func(__manifest__.createChild(
+@Manifest.func(Manifest(
+    parent=__manifest__,
     location=None,
     description="Analyze dependencies and return structured data",
     status=Manifest.Status.Development,

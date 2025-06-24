@@ -16,7 +16,8 @@ _project_core_authors = Manifest.AuthorList.create([
 
 _project_core_maintainers = Manifest.AuthorList.create(_project_core_authors.authors.copy())
 
-__manifest__ : Manifest = Manifest.__root_manifest__.createChild(
+__manifest__ : Manifest = Manifest(
+    parent=Manifest.__root_manifest__,
     location=Manifest.Location(module=__name__),
     description="Pylium project",
     status=Manifest.Status.Development,
@@ -49,3 +50,6 @@ __manifest__ : Manifest = Manifest.__root_manifest__.createChild(
 # This manifest is defined as a project manifest. By doing this, this module will become the project root.
 __project_manifest__ = __manifest__
 
+# Set the parent manifest for the manifest module
+import pylium.manifest.__header__ as manifest_header_module
+manifest_header_module.__parent_manifest__ = __manifest__

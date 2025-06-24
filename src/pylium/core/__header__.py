@@ -1,7 +1,8 @@
 from pylium import __project_manifest__ as __parent_manifest__
 from pylium.manifest import Manifest
 
-__manifest__ : Manifest = __parent_manifest__.createChild(
+__manifest__ : Manifest = Manifest(
+    parent=__parent_manifest__,
     location=Manifest.Location(module=__name__, classname=None), 
     description="The core functionalities of the Pylium library.",
     status=Manifest.Status.Development,

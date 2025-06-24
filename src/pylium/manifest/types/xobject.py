@@ -33,7 +33,8 @@ class XObject(BaseModel, XObjectTypes):
     __style__: XObjectStyle = XObjectStyle.NONE
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        #super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
     def __str__(self):
         return self.model_dump_json(indent=2)

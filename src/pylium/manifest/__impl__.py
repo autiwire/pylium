@@ -9,6 +9,7 @@ import importlib.util
 import pkgutil
 import inspect
 import sys
+import threading
 
 # External imports
 from packaging.version import Version 
@@ -17,6 +18,9 @@ from pydantic import Field, computed_field, ConfigDict
 # Logging
 from logging import getLogger
 logger = getLogger(__name__)
+
+# Import manifest header module at module level to avoid thread safety issues with imports
+import pylium.manifest.__header__ as manifest_header_module
 
 
 class Manifest(ManifestTypes.XObject, ManifestTypes):
@@ -101,7 +105,7 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
     description: str = Field(default="", description="Description of this manifest")
     changelog: List[ManifestTypes.Changelog] = Field(default_factory=list, description="List of changelog entries")
     dependencies: List[ManifestTypes.Dependency] = Field(default_factory=list, description="List of dependencies")
-    authors: ManifestTypes.AuthorList = Field(default_factory=lambda: ManifestTypes.AuthorList([]), description="List of authors")
+    authors: ManifestTypes.AuthorList = Field(default_factory=lambda: ManifestTypes.AuthorList(authors=[]), description="List of authors")
     maintainers: Optional[ManifestTypes.MaintainerList] = Field(default=None, description="List of maintainers")
     copyright: Optional[ManifestTypes.Copyright] = Field(default=None, description="Copyright information")
     license: Optional[ManifestTypes.License] = Field(default=None, description="License information")
@@ -166,7 +170,8 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
 
 
     def __init__(self,
-                location: ManifestTypes.Location,
+                parent: "Manifest",
+                location: Optional[ManifestTypes.Location] = None,
                 description: str = "",
                 changelog: Optional[List[ManifestTypes.Changelog]] = None, 
                 dependencies: Optional[List[ManifestTypes.Dependency]] = None, 
@@ -183,13 +188,74 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
                 *args, 
                 **kwargs):
         """Initialize a new Manifest instance."""
+
+        # TESTING
+        # Get the caller's frame (who's creating the manifest)
+        frame = inspect.currentframe().f_back
+        
+        # Get module info
+        module_name = frame.f_globals['__name__']
+        print(f"  MODULE: {module_name}")
+        module = sys.modules[module_name]
+        
+        # Store basic info
+        #self.description = description
+        self._children = []
+        self._children_lock = threading.Lock()
+        
+        # Detect context and set pointer
+        if 'locals' in frame.f_locals and '__module__' in frame.f_locals:
+            # We're in a class definition
+            self._context = 'class'
+            self._ptr = frame.f_locals['locals']  # The class being defined
+            #self.fqn = f"{module_name}.{frame.f_code.co_name}"
+            pass
+            
+        elif frame.f_code.co_name != '<module>':
+            # We're in a function/method
+            self._context = 'function'
+            self._ptr = frame.f_code  # The function object
+            
+            # Get full qualified name including class if we're in a method
+            if 'self' in frame.f_locals:
+                #cls_name = frame.f_locals['self'].__class__.__name__
+                #self.fqn = f"{module_name}.{cls_name}.{frame.f_code.co_name}"
+                pass
+            else:
+                #self.fqn = f"{module_name}.{frame.f_code.co_name}"
+                pass
+                
+        else:
+            # We're at module level
+            self._context = 'module'
+            self._ptr = module
+            #self.fqn = module_name
+            pass
+
+        # Inherit from parent if not provided
+        if parent:
+            #self.description = parent.description
+            #self.changelog = parent.changelog
+            #self.dependencies = parent.dependencies
+            authors = parent.authors if authors is None else authors
+            maintainers = parent.maintainers if maintainers is None else maintainers
+            copyright = parent.copyright if copyright is None else copyright
+            license = parent.license if license is None else license
+            status = parent.status if status is None else status
+            accessMode = parent.accessMode if accessMode is None else accessMode
+            aiAccessLevel = parent.aiAccessLevel if aiAccessLevel is None else aiAccessLevel
+            threadSafety = parent.threadSafety if threadSafety is None else threadSafety
+            frontend = parent.frontend if frontend is None else frontend
+            backend = parent.backend if backend is None else backend
+
+
         # Initialize Pydantic model with all fields
         super().__init__(
             location=location,
             description=description,
             changelog=changelog if changelog is not None else [],
             dependencies=dependencies if dependencies is not None else [],
-            authors=authors if authors is not None else ManifestTypes.AuthorList([]),
+            authors=authors if authors is not None else ManifestTypes.AuthorList(authors=[]),
             maintainers=maintainers if maintainers is not None else None,  # Will use authors if None
             copyright=copyright,
             license=license,
@@ -205,6 +271,10 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
         # Set maintainers to authors if not provided
         if self.maintainers is None:
             self.maintainers = self.authors
+        
+        self._parent_lock = threading.Lock()
+        self._parent = parent
+
 
     @computed_field
     @property
@@ -235,6 +305,37 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
     @computed_field
     @property
     def parent(self) -> Optional["Manifest"]:
+        """
+        Dynamically determine the parent manifest in a thread-safe manner.
+        - Default is the private _parent field
+        - Special case: manifest module uses __parent_manifest__
+        
+        Thread Safety:
+        - Uses a class-level lock for parent resolution
+        - Import of manifest_header_module is done at module level
+        - Parent resolution is atomic
+        """
+        # Fast path - if parent is set, return it (no lock needed as it's immutable after init)
+        if self._parent is not None:
+            return self._parent
+
+        # Slow path - resolve parent with proper locking
+        with self._parent_lock:
+            # Check again in case another thread set it while we were waiting
+            if self._parent is not None:
+                return self._parent
+                
+            # Check if this is the manifest module's manifest
+            if self == manifest_header_module.__manifest__:
+                # Get parent manifest atomically under the lock
+                self._parent = getattr(manifest_header_module, "__parent_manifest__", None)
+                return self._parent
+            
+            return None
+
+    @computed_field
+    @property
+    def parent_bak(self) -> Optional["Manifest"]:
         """
         Dynamically determine the parent manifest based on the location.
         For module manifests, looks for parent module's manifest.
@@ -333,13 +434,14 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
         
         try:
             # Only look in the current module, not recursively
-            #print(f"  IMPORTING: {self.location.fqnShort}")
+            print(f"  IMPORTING: {self.location.fqnShort}")
             #print(f"  IMPORTING: {self.location.module}")
             module = importlib.import_module(self.location.shortName)
 
             if self.location.isModule and self.location.isPackage:
                 # We need to find all the __header__ and *_h submodules
                 for finder, name, ispkg in pkgutil.iter_modules(module.__path__):
+                    #print(f"  FINDER: {finder} {name} {ispkg}")
                     header : str = None
                     if ispkg:
                         # its a package, find the __header__ submodule  
@@ -350,20 +452,23 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
 
                     if header:
                         try:
+                            #print(f"  IMPORTING_HEADER: {header}")
                             importlib.import_module(header)
                         except ImportError as e:
+                            #print(f"  IMPORT ERROR: {e}")
                             pass                    
 
                 #print(f"  MODULE: {self.location.fqnShort}")
                 for name, member in inspect.getmembers(module):
                     if name.startswith("__") and name.endswith("__"):
                         continue
-                    #print(f"  NAME: {name} {member}")
+                    print(f"  NAME: {name} {member}")
                     if hasattr(member, "__manifest__"):
                         
-                        #print(f"  MANIFEST: {member.__manifest__.location.fqnShort}")
+                        print(f"  MANIFEST: {member.__manifest__}")
+                        print(f"  PARENT: {member.__manifest__.parent}")
                         if member.__manifest__.parent == self and not member.__manifest__ in childs:
-                            #print(f"ADD_MOD: {member.__manifest__.location.fqnShort}")
+                            print(f"ADD_MOD: {member.__manifest__.location.fqnShort}")
                             childs.append(member.__manifest__)
             
             elif self.location.isClass:
@@ -516,9 +621,26 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
 
 
     def __eq__(self, other: Any) -> bool:
+        #print(f"  TYPE: {type(self)} == {type(other)}")
+        
+        # If one is RootManifest, the other must be too
+        if isinstance(self, RootManifest) != isinstance(other, RootManifest):
+            return False
+
+        # RootManifest is a special case
+        if isinstance(self, RootManifest):
+            return True  # There can be only one RootManifest
+
+        # For normal manifests
         if not isinstance(other, Manifest):
             return False
-        # Compare based on key attributes for equality
+
+        #print(f"  LOC: {self.location} == {other.location}")
+
+        # Both must have a location
+        if self.location is None or other.location is None:
+            return False
+
         return (
             self.location.fqn == other.location.fqn and
             (self.version if self.changelog else None) == (other.version if other.changelog else None) and 
@@ -595,43 +717,44 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
         dependencies = self._get_dependencies_recursive(recursive, type_filter, category_filter)
         return Manifest.Dependency.List(dependencies=dependencies)
 
-    def createChild(self, 
-                   location: ManifestTypes.Location,
-                   description: Optional[str] = None,
-                   changelog: Optional[List[ManifestTypes.Changelog]] = None,
-                   dependencies: Optional[List[ManifestTypes.Dependency]] = None,
-                   authors: Optional[ManifestTypes.AuthorList] = None,
-                   maintainers: Optional[ManifestTypes.MaintainerList] = None,
-                   copyright: Optional[ManifestTypes.Copyright] = None,
-                   license: Optional[ManifestTypes.License] = None,
-                   status: Optional[ManifestTypes.Status] = None,
-                   accessMode: Optional[ManifestTypes.AccessMode] = None,
-                   threadSafety: Optional[ManifestTypes.ThreadSafety] = None,
-                   frontend: Optional[ManifestTypes.Frontend] = ManifestTypes.Frontend.NoFrontend,
-                   backend: Optional[ManifestTypes.Backend] = None,
-                   aiAccessLevel: Optional[ManifestTypes.AIAccessLevel] = None) -> "Manifest":
-        """
-        Creates a new Manifest instance that inherits attributes from this (parent) manifest.
-        Attributes that are explicitly provided to createChild will override the parent's attributes.
-        For list-like attributes (changelog, dependencies), the provided value replaces the parent's, it's not merged.
-        If None is provided for an attribute, it inherits from the parent.
-        """
-        return Manifest(
-            location=location,
-            description=description,
-            changelog=changelog,
-            dependencies=dependencies,
-            authors=authors if authors is not None else self.authors,
-            maintainers=maintainers if maintainers is not None else self.maintainers,
-            copyright=copyright if copyright is not None else self.copyright,
-            license=license if license is not None else self.license,
-            status=status if status is not None else self.status,
-            accessMode=accessMode if accessMode is not None else self.accessMode,
-            threadSafety=threadSafety if threadSafety is not None else self.threadSafety,
-            frontend=frontend if frontend is not None else self.frontend,
-            backend=backend if backend is not None else self.backend,
-            aiAccessLevel=aiAccessLevel if aiAccessLevel is not None else self.aiAccessLevel
-        )
+#    def createChild(self, 
+#                   location: ManifestTypes.Location,
+#                   description: Optional[str] = None,
+#                   changelog: Optional[List[ManifestTypes.Changelog]] = None,
+#                   dependencies: Optional[List[ManifestTypes.Dependency]] = None,
+#                   authors: Optional[ManifestTypes.AuthorList] = None,
+#                   maintainers: Optional[ManifestTypes.MaintainerList] = None,
+#                   copyright: Optional[ManifestTypes.Copyright] = None,
+#                   license: Optional[ManifestTypes.License] = None,
+#                   status: Optional[ManifestTypes.Status] = None,
+#                   accessMode: Optional[ManifestTypes.AccessMode] = None,
+#                   threadSafety: Optional[ManifestTypes.ThreadSafety] = None,
+#                   frontend: Optional[ManifestTypes.Frontend] = ManifestTypes.Frontend.NoFrontend,
+#                   backend: Optional[ManifestTypes.Backend] = None,
+#                   aiAccessLevel: Optional[ManifestTypes.AIAccessLevel] = None) -> "Manifest":
+#        """
+#        Creates a new Manifest instance that inherits attributes from this (parent) manifest.
+#        Attributes that are explicitly provided to createChild will override the parent's attributes.
+#        For list-like attributes (changelog, dependencies), the provided value replaces the parent's, it's not merged.
+#        If None is provided for an attribute, it inherits from the parent.
+#        """
+#        return Manifest(
+#            parent=self,
+#            location=location,
+#            description=description,
+#            changelog=changelog,
+#            dependencies=dependencies,
+#            authors=authors if authors is not None else self.authors,
+#            maintainers=maintainers if maintainers is not None else self.maintainers,
+#            copyright=copyright if copyright is not None else self.copyright,
+#            license=license if license is not None else self.license,
+#            status=status if status is not None else self.status,
+#            accessMode=accessMode if accessMode is not None else self.accessMode,
+#            threadSafety=threadSafety if threadSafety is not None else self.threadSafety,
+#            frontend=frontend if frontend is not None else self.frontend,
+#            backend=backend if backend is not None else self.backend,
+#            aiAccessLevel=aiAccessLevel if aiAccessLevel is not None else self.aiAccessLevel
+#        )
     
 class RootManifest(Manifest):
     """
@@ -645,9 +768,9 @@ class RootManifest(Manifest):
         # Initialize base Manifest with all fields
         super().__init__(*args, **kwargs)
     
-    @property
-    def parent(self) -> Optional["Manifest"]:
-        return None
+    #@property
+    #def parent(self) -> Optional["Manifest"]:
+    #    return None
     
     @property
     def children(self) -> List["Manifest"]:

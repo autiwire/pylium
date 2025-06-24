@@ -47,7 +47,8 @@ import functools
 import logging
 logger = logging.getLogger(__name__)
 
-__manifest__: Manifest = __parent_manifest__.createChild(
+__manifest__: Manifest = Manifest(
+    parent=__parent_manifest__,
     location=Manifest.Location(module=__name__, classname=None),
     description="Header module",
     status=Manifest.Status.Development,
@@ -125,7 +126,8 @@ class Header(ABC, metaclass=HeaderMeta):
     ClassType = HeaderClassType.Header
     Manifest = Manifest
     
-    __manifest__: Manifest = __manifest__.createChild(
+    __manifest__: Manifest = Manifest(
+        parent=__manifest__,
         location=Manifest.Location(module=__name__, classname=__qualname__),
         description="Base class for all headers",
         status=Manifest.Status.Development,
