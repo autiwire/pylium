@@ -189,46 +189,111 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
                 **kwargs):
         """Initialize a new Manifest instance."""
 
-        # TESTING
-        # Get the caller's frame (who's creating the manifest)
+
+        class CallerInfo:
+            from types import FrameType
+
+            def __init__(self, frame: FrameType):
+                self.module_name: str = frame.f_globals.get('__name__', 'unknown')
+                self.module: Optional[object] = sys.modules.get(self.module_name)
+                self.function: str = frame.f_code.co_name
+                self.qualname: str = frame.f_code.co_qualname
+
+                self.classname: Optional[str] = None
+                self.is_method: bool = False
+                self.is_class_scope: bool = False
+                self.is_module_scope: bool = self.qualname == "<module>"
+
+                if "self" in frame.f_locals:
+                    self.classname = type(frame.f_locals["self"]).__name__
+                    self.is_method = True
+                elif "cls" in frame.f_locals:
+                    self.classname = frame.f_locals["cls"].__name__
+                    self.is_method = True
+                elif "__module__" in frame.f_locals:
+                    # we're in a class body (definition time)
+                    self.classname = self.qualname
+                    self.is_class_scope = True
+
+            def as_dict(self):
+                return {
+                    "module": self.module_name,
+                    "class": self.classname,
+                    "function": self.function,
+                    "qualname": self.qualname,
+                    "is_method": self.is_method,
+                    "is_class_scope": self.is_class_scope,
+                    "is_module_scope": self.is_module_scope,
+                }
+
+            def __str__(self):
+                parts = [f"[{self.module_name}]"]
+                if self.classname:
+                    parts.append(f"class {self.classname}")
+                if self.function and self.function != "<module>":
+                    parts.append(f"def {self.function}()")
+                return " → ".join(parts)
+
+
         frame = inspect.currentframe().f_back
+        info = CallerInfo(frame)
+        print(info)
         
-        # Get module info
-        module_name = frame.f_globals['__name__']
-        print(f"  MODULE: {module_name}")
-        module = sys.modules[module_name]
-        
+        # --- Function ---
+#        func_name = frame.f_code.co_name
+
+        # --- Class ---
+#        cls_name = None
+        # Check if 'self' or 'cls' is in local variables
+#        if 'self' in frame.f_locals:
+#            cls_name = type(frame.f_locals['self']).__name__
+#        elif 'cls' in frame.f_locals:
+#            cls_name = frame.f_locals['cls'].__name__
+
+#        print({
+#            "module": frame.f_globals.get("__name__", None),
+#            "function": frame.f_code.co_name,
+#            "class": type(frame.f_locals.get("self", None)).__name__ if "self" in frame.f_locals else None,
+#        })
+
         # Store basic info
         #self.description = description
         self._children = []
         self._children_lock = threading.Lock()
         
+        #
+        
+
         # Detect context and set pointer
         if 'locals' in frame.f_locals and '__module__' in frame.f_locals:
             # We're in a class definition
-            self._context = 'class'
-            self._ptr = frame.f_locals['locals']  # The class being defined
+            print(f"  CLASS: {frame.f_code.co_name}")
+#            self._context = 'class'
+
+#            self._ptr = frame.f_locals['locals']  # The class being defined
             #self.fqn = f"{module_name}.{frame.f_code.co_name}"
             pass
             
         elif frame.f_code.co_name != '<module>':
             # We're in a function/method
-            self._context = 'function'
-            self._ptr = frame.f_code  # The function object
+#            self._context = 'function'
+#            self._ptr = frame.f_code  # The function object
             
             # Get full qualified name including class if we're in a method
             if 'self' in frame.f_locals:
+                #print(f"  METHOD: {frame.f_code.co_name}")
                 #cls_name = frame.f_locals['self'].__class__.__name__
                 #self.fqn = f"{module_name}.{cls_name}.{frame.f_code.co_name}"
                 pass
             else:
+
                 #self.fqn = f"{module_name}.{frame.f_code.co_name}"
                 pass
                 
         else:
             # We're at module level
-            self._context = 'module'
-            self._ptr = module
+#            self._context = 'module'
+#            self._ptr = module
             #self.fqn = module_name
             pass
 
@@ -299,7 +364,7 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
     @property
     def isRoot(self) -> bool:
         """Check if the location points to the root manifest."""
-        return isinstance(self, RootManifest)
+        return self._parent is None
 
 
     @computed_field
@@ -389,7 +454,7 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
                 except ImportError:
                     return None
 
-        print(f"  PARENT: {self.location.fqn} is not found")
+        #print(f"  PARENT: {self.location.fqn} is not found")
 
         return None
 
@@ -432,9 +497,16 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
     
         childs = []
         
+        if self.isRoot:
+            for module in sys.modules.values():
+                # We only accept top level packages here to be listed under the root manifest
+                if hasattr(module, "__project_manifest__") and not "." in module.__name__:
+                    childs.append(module.__project_manifest__)
+            return childs
+
         try:
             # Only look in the current module, not recursively
-            print(f"  IMPORTING: {self.location.fqnShort}")
+            #print(f"  IMPORTING: {self.location.fqnShort}")
             #print(f"  IMPORTING: {self.location.module}")
             module = importlib.import_module(self.location.shortName)
 
@@ -462,13 +534,13 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
                 for name, member in inspect.getmembers(module):
                     if name.startswith("__") and name.endswith("__"):
                         continue
-                    print(f"  NAME: {name} {member}")
+                    #print(f"  NAME: {name} {member}")
                     if hasattr(member, "__manifest__"):
                         
-                        print(f"  MANIFEST: {member.__manifest__}")
-                        print(f"  PARENT: {member.__manifest__.parent}")
+                        #print(f"  MANIFEST: {member.__manifest__}")
+                        #print(f"  PARENT: {member.__manifest__.parent}")
                         if member.__manifest__.parent == self and not member.__manifest__ in childs:
-                            print(f"ADD_MOD: {member.__manifest__.location.fqnShort}")
+                            #print(f"ADD_MOD: {member.__manifest__.location.fqnShort}")
                             childs.append(member.__manifest__)
             
             elif self.location.isClass:
@@ -623,13 +695,13 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
     def __eq__(self, other: Any) -> bool:
         #print(f"  TYPE: {type(self)} == {type(other)}")
         
-        # If one is RootManifest, the other must be too
-        if isinstance(self, RootManifest) != isinstance(other, RootManifest):
+        # If one is root manifest, the other must be too
+        if self.isRoot != other.isRoot:
             return False
 
-        # RootManifest is a special case
-        if isinstance(self, RootManifest):
-            return True  # There can be only one RootManifest
+        # root-manifest is a special case, there can be only one root-manifest
+        if self.isRoot:
+            return True 
 
         # For normal manifests
         if not isinstance(other, Manifest):
@@ -717,68 +789,3 @@ class Manifest(ManifestTypes.XObject, ManifestTypes):
         dependencies = self._get_dependencies_recursive(recursive, type_filter, category_filter)
         return Manifest.Dependency.List(dependencies=dependencies)
 
-#    def createChild(self, 
-#                   location: ManifestTypes.Location,
-#                   description: Optional[str] = None,
-#                   changelog: Optional[List[ManifestTypes.Changelog]] = None,
-#                   dependencies: Optional[List[ManifestTypes.Dependency]] = None,
-#                   authors: Optional[ManifestTypes.AuthorList] = None,
-#                   maintainers: Optional[ManifestTypes.MaintainerList] = None,
-#                   copyright: Optional[ManifestTypes.Copyright] = None,
-#                   license: Optional[ManifestTypes.License] = None,
-#                   status: Optional[ManifestTypes.Status] = None,
-#                   accessMode: Optional[ManifestTypes.AccessMode] = None,
-#                   threadSafety: Optional[ManifestTypes.ThreadSafety] = None,
-#                   frontend: Optional[ManifestTypes.Frontend] = ManifestTypes.Frontend.NoFrontend,
-#                   backend: Optional[ManifestTypes.Backend] = None,
-#                   aiAccessLevel: Optional[ManifestTypes.AIAccessLevel] = None) -> "Manifest":
-#        """
-#        Creates a new Manifest instance that inherits attributes from this (parent) manifest.
-#        Attributes that are explicitly provided to createChild will override the parent's attributes.
-#        For list-like attributes (changelog, dependencies), the provided value replaces the parent's, it's not merged.
-#        If None is provided for an attribute, it inherits from the parent.
-#        """
-#        return Manifest(
-#            parent=self,
-#            location=location,
-#            description=description,
-#            changelog=changelog,
-#            dependencies=dependencies,
-#            authors=authors if authors is not None else self.authors,
-#            maintainers=maintainers if maintainers is not None else self.maintainers,
-#            copyright=copyright if copyright is not None else self.copyright,
-#            license=license if license is not None else self.license,
-#            status=status if status is not None else self.status,
-#            accessMode=accessMode if accessMode is not None else self.accessMode,
-#            threadSafety=threadSafety if threadSafety is not None else self.threadSafety,
-#            frontend=frontend if frontend is not None else self.frontend,
-#            backend=backend if backend is not None else self.backend,
-#            aiAccessLevel=aiAccessLevel if aiAccessLevel is not None else self.aiAccessLevel
-#        )
-    
-class RootManifest(Manifest):
-    """
-    The root manifest is the root manifest for everything.
-    Create top level children from this manifest.
-    """
-    # No additional fields needed for RootManifest, it inherits all fields from Manifest
-    
-    def __init__(self, *args, **kwargs):
-        """Initialize a new RootManifest instance."""
-        # Initialize base Manifest with all fields
-        super().__init__(*args, **kwargs)
-    
-    #@property
-    #def parent(self) -> Optional["Manifest"]:
-    #    return None
-    
-    @property
-    def children(self) -> List["Manifest"]:
-        # We need to search for __project_manifest__ in all available modules
-        # and return the manifest for the module that has __project_manifest__
-        _children = []
-        for module in sys.modules.values():
-            # We only accept top level packages here to be listed under the root manifest
-            if hasattr(module, "__project_manifest__") and not "." in module.__name__:
-                _children.append(module.__project_manifest__)
-        return _children

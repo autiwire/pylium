@@ -4,7 +4,7 @@
 # 2. The header needs the Manifest class to define its own manifest
 # 3. This creates a clean separation where Manifest remains independent of the header concept
 # 4. Yet the manifest system still benefits from the recursive structure through __manifest__ and parent resolution
-from .__impl__ import Manifest, RootManifest
+from .__impl__ import Manifest
 
 
 from typing import Dict, Callable
@@ -26,7 +26,7 @@ _manifest_core_authors = Manifest.AuthorList(authors=[
 _manifest_core_maintainers = Manifest.AuthorList(authors=_manifest_core_authors.authors.copy())
 
 # Root manifest for the manifest system
-__root_manifest__ = RootManifest(
+__root_manifest__ = Manifest(
     parent=None,
     location=Manifest.Location(module="", classname=None),
     description="Root manifest for the manifest system",

@@ -321,13 +321,12 @@ class CLIImpl(CLI):
         start_time = time.time()
         renderer = CLIRenderer(self._target_manifest)
         cli_target = renderer.render()
+        print(f"Rendering time cli object: {time.time() - start_time} seconds")
 
         # Repeat - modules should already be imported
         start_time = time.time()
         renderer = CLIRenderer(self._target_manifest)
         cli_target = renderer.render()
-        print(f"Rendering time cli object: {time.time() - start_time} seconds")
-
         print(f"Rendering time cli object: {time.time() - start_time} seconds")
 
         if "PAGER" not in os.environ:
